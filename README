@@ -1,0 +1,119 @@
+
+Apskel 1.0 (alpha)
+Copyright (C) 2012 By Matthew C. Tedder
+Email: matthewct@gmail.com
+Apskel is provided under the terms and conditions specified in the
+accompanying LICENSE file (The LGPL)
+
+Apskel is short for "Application Skeleton".  It's a starting point and 
+framework for rapid web application development, using the PHP.
+
+My primary objective with Apskel is to make web development quick and simple.
+By "web development", I mean the entire software lifecycle:
+
+  (1) Analysis and Design 
+  (2) Coding
+  (3) Testing and Debugging
+  (4) Documentation and Maintenance
+  (5) Minor and Major Revisions
+
+Some of the beliefs I work by to achieve this objective include:
+
+  (1) Determine requirements (needs/wants) by seeking why, not what.  Frankly,
+      users often don't fully understand what they want.  It's very hard to 
+      get that out of them using the "what" approach.  It's popular to ask
+      them "what" questions and encode that into a contract so they have to
+      pay you but it doesn't make a happy customer, much less useful software.
+        
+  (2) Design from the user's point of view.  No matter how much you think you
+      know what users will like, test it with real users.  You probably don't.
+      Use of the software should be as obvious and quick as possible.  If the
+      user misunderstands--it's a bug.  Use the Gold Rule--how much time do you
+      like having to waste learning how to use a software application or tool?
+      
+  (3) Expend the extra effort to parameterize and automate, such as to save
+      time, errors, and effort ongoing.  However, ensure that parameterization
+      and automation tools are quick and easy to understand and use--otherwise
+      don't do it.  The object is to make things quicker and easier and to 
+      reduce the potential for errors.  Remember that the software developer
+      is the user of Apskel as much as the end user is the user of any
+      web applications built on it.
+
+Basic Design
+
+  A "webroot" directory is the only direct exposure to the web.  It holds
+  index.php and robots.txt--nothing else.  Resources, such as CSS or 
+  Javascript files, are programmatically pulled or concatenated based on a
+  scheme: environment level, application level, and/or module level.
+
+  An "identifications.php" component identifies the environment based on URL
+  and pulls the appropriate configuration parameters.  This way, you merely
+  need to copy the site to another server and it will auto-recognize what
+  configuration to use, eliminating the potential for accidentally connecting
+  to the wrong database, etc.  The configuration also provides URL-rewrite
+  capabilities in each environment configuration, limiting or eliminating the
+  need to edit apache config files for this.
+
+  Web applications are comprised of application modules.  Each application 
+  module is held under ~/apskel/application/1.0/user directory (where "1.0" is 
+  the version and "user" is the module name).  The files comprising each
+  module should include (presuming the "user" module in this example):
+
+    - UserRegistration.php
+      This defines the services and their parameters to make accessible to
+      browsers.  It is also used for auto-generation of RESTful API 
+      documentation.  And, this file defines any database tables for the
+      module.  This is used to build, check, and upgrade the database and to
+      support data model access methods.  It can also be used to auto-generate
+      documentation, abstract database types, or service generic querying / 
+      reporting facilities.  Not all of this is yet implemented.
+
+    - UserController.php
+      This includes a method for each service registered in the module's
+      registration.  Each is prefixed with "process", such as "processLogin".
+      Any supporting methods may be named in any other way.
+
+    - UserModels.
+      This includes the module's data access (select, insert, update, etc) 
+      methods.  It's base class provides some base methods, including for
+      initialization of the database tables for the module.
+
+    - UserViews.
+      This includes the module's views.  Each method is callable by the
+      controller.  The base class provides a facility for creation of views
+      from templates, too.   
+
+    - resources.
+      This is a directory for holding module-level resource files, such as CSS
+      or Javascript files.  I recommend that any templates also be put there.
+
+  Important Notes: 
+  
+    - All web request variables are scrubbed for injection attacks prior to
+      being passed into a controller method.  However, the original values
+      are left untampered with in the $_GET, $_POST, and $_REQUEST variables.
+
+    - Two variables are standard accross all controllers and views: "messages"
+      is for any textual messages to be added to a view; "warnings" is for any
+      textual messages to be shown as warnings.  This standard should be 
+      maintained as any controller request may be called from any other module
+      that might have messages to pass along to the user there.
+
+TODOs:
+  - I leave "TODO" comments everywhere in the code with respective notes on
+    things I think should probably be done, if I don't do it then.  The reason
+    for this is to keep my own momentum on getting done the more major work
+    I am trying to accomplish at the time.  It's a way of keeping the
+    inspiration going.  When that wears out, I often go back and work through
+    some of the TODOs.  They are mostly pretty mechanical in nature but at
+    times these require some thinking as for an approach.
+
+  - I recognize the critical need for developer documentation.  I will do that
+    at the next convergence of opportunity and inspiration, since this is a
+    project in my spare time... In the mean time, the "design.txt" document
+    is not eligant but can suffice.
+
+
+Matthew C. Tedder
+matthewct@gmail.com
+

@@ -1,0 +1,14 @@
+
+Forgive me if this is rough--I will improve and test this in later commits.
+
+In theory, you need to to install and start apache mod_rewrite then add the 
+virtual host (or one similar) in the setup directory.
+
+Next, setup the environments/identifications.php file for URL-based 
+environment identification.  The settings.php files should hold valid database
+credentials, capable of creating tables.  Their creation should then be
+automatic when each module is run.
+
+Matthew C. Tedder
+matthewct@gmail.com
+

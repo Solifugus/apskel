@@ -1,0 +1,158 @@
+
+Name
+	Apskel
+
+Purpose
+	Rapid web application development, support, and maintenance
+
+Remaining Tasks:
+	* ENSURE $param['warnings'] and $param['messages'] are included at least as '' in every request.
+	* environment-based path rewrites
+	* resource engine
+	* implement return stacks array as a property of Framework: 
+		- results[n]['controller']
+		- results[n]['parameters']
+		- results[n]['views']['type'][{view name}]
+		- results[n]['messages'][n] 
+		- results[n]['log'][n]
+	  That way, main methods could just return true/false for succeeded or failed.
+
+
+Marketing Points
+	Drives Work Though Defines Processes
+	Tells workers what to do, when, how long they have, keeps track of time, and ensures they do it.
+
+Framework API:
+	->runSql( $sql ) 
+		Returns a PDO result set of the SQL provided.
+	->getControllerTables()
+		Returns an array of table specifications.
+	->logMessage( 'textual message', NOTICE )
+		Writes to the log.  NOTICE is the default type.. Others are WARNING, CRITICAL, etc..
+	->getSetting('post_login_page');
+		Gets the value of the specified setting for the environment (cross version)
+	->getResource()
+		Returns full document data to be returned to the client.
+	->getUriController( $uri )
+	->getUriRequest( $uri )
+	->getUriParameters( $uri )
+	->getView( $controller_name, $request_name, $parameters )
+		Returns whatever sub-view is properly returned by the controller/request given certain parameters.
+
+Organization of Files
+	~/webroot/index.php                                                -- minimally starts the application
+	~/webroot/robots.txt                                               -- instructions for robots that care
+
+	~/environments/identification.php                                  -- DNS substring to identify environment
+	~/environments/{version}/{environmrnt}/                            -- directory for holding environment specific files 
+	~/environments/{version}/{environmrnt}/settings.php                -- settings for given environment
+
+	~/application/framework.php                                             -- central framework API implementation 
+	~/application/{version}/                                                -- base directory for version of the application
+	~/application/{version}/Controller.php                                  -- base controller class file                     
+	~/application/{version}/DataModels.php                                  -- base data models class file                      
+	~/application/{version}/Views.php                                       -- base views class file                          
+	~/application/{version}/resources/{resource file}                       -- Global application resources (http://{domain name}/resource/{resource file})
+	~/application/{version}/resources-{environment}/{resource file}         -- Environment resource overrides (http://{domain name}/resource/{resource file})
+	~/application/{version}/{package}/resources/{resource file}             -- package level resources (http://{domain name}/resource/{resource file})
+	~/application/{version}/{package}/registration.php                      -- package' registration (controller's methods, each with parameters, defaults, and descriptions)
+	~/application/{version}/{package}/{package}Controller.php               -- package's controller (methods are service requests)
+	~/application/{version}/{package}/{package}DataModels.php               -- package's data model(s)
+	~/application/{version}/{package}/{package}Views.php                    -- package's view(s)
+
+Session Variables:
+	$_SESSION['user_name']
+	$_SESSION['user_id']
+
+Process Flow
+	1. Web request is received at ~/webroot/index.php
+	2. ~/webroot/index.php 
+		1.1 identifies environment by domain name substring as registered in ~/environments/identification.php
+		1.2 changes working directory to ~/application/{version}
+		1.3 loads and calls reception
+	3. ~/application/{version}/reception.php
+		3.1 loads environment settings from ~/environments/{version}/{environment}/settings.php
+		3.2 deciphers the request
+			3.2.1 
+	4. 
+	5. 
+
+Detials
+	Bread Crumb -- a bread crumb should be maintained as to which controllers were called in what order.  This should be $framework->bread_crumb, a numerical array of associatives
+                       including ['controller'] and ['parameters'].  This can be used to determine if a page was just freshly entered or otherwise..
+
+	Return -- every controller should return an associative return array.  Elements it may include (as appropriate) are: 
+	          messages -- type, user message, maintainer message
+	          html -- HTML code
+	          css -- css code, head and links
+	          javascript -- javascript code, before and after page load
+
+	Site -- site wider templates, header, footer, left, and/or right
+
+
+Controller Registration
+	Every request is a method within a controller class.  It's registration is specified in an array assignment.  Parameters registered are guaranteed
+	to be passed into a controller method, with default values if not actually received.  If a default value given is null, then the request is rejected
+	outright and will not reach the method.  Check boxes and radio buttons will be translated to a 'yes' string value when received, else the default
+	value registered.  
+
+	Return format should default to HTML but should otherwise be specified according to the automatically recognized 'return' parameter.  Values should
+	include the following where possible:  html, text, pdf, excel, csv, xml, json, etc.  Or, if not text then according to standard mime type specified.
+
+	A top level controller should gather data, views, styles, and merge them.  However, merging helpers may be provided.
+
+Return Values of Sub-Requests (future framework version)
+	An associative array separating the components should be returned by a request.  These should include the following:
+	- ['data_models'][$name]      -- maps to view templates
+	- ['views_templates'][$name]  -- accepts data models and also sub-views within views
+	- ['css'][$order]
+	- ['javascript'][$section]
+	Or Alternatively, I could implement a standard SIN translator to various other formats. 
+
+
+Coding Conventions
+	Indentations & Spacing
+		Spacing left of any characters should be tabs on any line, and spaces thereafter (no more tabs).
+		Related assignments statements should have equals sings vertically aligned.
+
+	Variables & Properties
+		Use all lowercase letters with words being underscore separated.
+
+	Methods
+		Use camel-case words (no underscores) with the first character always lowercase.  Acronyms should also be treated as if words and camel-cased.
+
+	Includes/Requires
+		If non-conditionally included or required, these should be at the top of the space in which they are to be used (file, method, etc).
+		If conditional included or required, these should be at the earliest possible point within the condition.
+
+	Curly Braces & Parenthesis 
+		Always place the first (opening) brace to the right of its initiating statement.
+		If a single statement then place braces around it on the same line.
+		If multiple statements then place put the last (closing) brace on a line by itself.
+		For parenthesis, do all in one line, vertically aligned, or else the same as for braces.
+
+
+Standard Packages
+	resource
+		Return the contents of files from resources directories (environment overriding application overriding package)
+
+	user
+		Login, profile, logout, directory
+
+	redirect
+		Provide a redirect to the specified URL
+
+	docdir
+		Formulates and returns requested information as a document or a directory via webDAV
+
+	workmosaic
+		Project management that actively drives work, rather than just passively enabling user's to document
+
+	thinkmosaic
+		Wiki-style conversational agent
+
+	scientist
+		Scientific knowledge acquisition system
+	
+
+

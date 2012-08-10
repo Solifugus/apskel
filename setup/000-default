@@ -1,0 +1,18 @@
+
+
+# Apskel / Workmosaic
+# Example of how to setup Apache config
+<VirtualHost *:80>
+	ServerName workmosaic.com
+	ServerAlias dev-workmosaic.com
+	DocumentRoot /var/www/apskel/webroot
+
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteLog "/var/log/apache2/rewrite.log"
+	RewriteLogLevel 9
+	RewriteRule ^(.*)$ /index.php?s=$1 [L]
+</IfModule>
+
+</VirtualHost>
+
