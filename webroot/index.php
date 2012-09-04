@@ -7,10 +7,14 @@
 # 2011-10-31:MCT: converted from raw functions to OO
 # 2011-11-02:MCT: restructuring top level flow..  
 # 2012-03-08:MCT: adding new environment loading code..
+# 2012-08-29:MCT: revised framework layout
 
-require_once('../environments/identification.php');
-require_once('../application/framework.php');
+// Determine How Request Arrived, Where To, and the Settings Thereof
+require_once('../identification.php');
+$identity = new Identity();
 
-$framework = new Framework();
+// Process the Request
+require_once("../framework.php");
+$framework = new Framework( $identity );
 echo $framework->getResource();
 

@@ -1,0 +1,112 @@
+#!/usr/bin/php
+
+<?php
+
+// File: apskel/tools/configure
+// Purpose: 
+//   Command line tool for configuring or reconfiguring Apskel web 
+//   applications.
+
+if( !isset( $argv[1] ) ) 
+{
+	help();
+	exit;
+}
+
+switch( $argv[1] ) {
+	case '-h':
+	case '--help':
+	case 'help':
+		help();
+		break;
+
+	case '-l':
+	case '--list':
+	case 'list':
+		showList( getItem( $argv ) );
+		break;
+
+	case '-i':
+	case '--identity':
+	case 'identity':
+		identity( getArguments( $argv ), getItem( $argv ) );
+		break;
+
+	case '-e':
+	case '--edit':
+	case 'edit':
+		edit( getItem( $argv ) );
+		break;
+
+	case '-b':
+	case '--build':
+	case 'build':
+		build( getArguments( $argv ) );
+		break;
+
+	default:
+		echo "No such command, \"{$argv[1]}\".\n";
+		help();
+		break;
+}
+
+// Collection command line option assignments into associative array
+function getArguments( $options ) {
+	$arguments = array();
+	foreach( $options as $option ) {
+		if( strpos( $option, '=' ) ) {
+			list( $key, $value ) = explode( '=', $option );
+			$arguments[ $key ] = $value;
+		}
+	}
+	return $arguments;
+}
+
+// Get command line item number or else null
+function getItem( $options ) {
+	if( is_numeric( $options[ 2 ] ) ) return $options[ 2 ];
+	else return null;
+}
+
+// Show usage message
+function help() {
+	echo "Usage: configure {command} options..\n";
+	echo "Commands:\n";
+
+	echo "\thelp\n";
+	echo "\t\tshows this help message.\n";
+
+	echo "\tlist [{item #}]\n";
+	echo "\t\tLists configuration items by item #.\n";
+
+	echo "\tidentity [recognizer=..] [application=..] [version=..] [environment=..]\n";
+	echo "\t\tmodify or add a domain name to application, environment, version mapping.\n";
+
+	echo "\tedit {item #}\n";
+	echo "\t\tbrings up the specified item # in the default text editor.\n";
+
+	echo "\tbuild { environment={name} [from={name}] | version={version} | organ={name} | virtualhost=apache2 }\n";
+	echo "\t\tcommand to build something new (e.g. a version or organ).\n";
+}
+
+// Show list of items by item #
+function showList( $item = null ) {
+}
+
+// Get list of items where array index is the item #
+function getList( $item = null ) {
+}
+
+// Set identity mapping attributes
+function identity( $options, $item = null ) {
+	print_r( $options ); print "item #: "; print_r( $item ); print "\n";
+}
+
+// Edit environment configuration ( by item # )
+function edit( $item = null ) {
+}
+
+// Build the specified thing..
+function build( $options ) {
+}
+
