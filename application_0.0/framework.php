@@ -273,14 +273,14 @@ class Framework {
 
 			// If $controller doesn't exist then interpret as a parameter and revert to the session default controller/request..
 			$controller = strtolower($controller);
-			if ( !$this->isController( $controller ) && $controller !== 'resource' ) {
+			if ( !$this->isController( $controller ) && $controller !== 'resources' ) {
 				$controller    = $_SESSION['controller'];
 				$request       = $_SESSION['request'];
 				$current_param = 0; // revert to all uriParameters being request parameters
 			}
 			
 			// if $request doesn't exist under $controller then interpret as a parameter and revert to the controller's 'default' request..
-			if( !isset( $request ) && $controller !== 'resource' ) {
+			if( !isset( $request ) && $controller !== 'resources' ) {
 				$request       = $_SESSION['request'];
 				$current_param = 1; // revert to all uriParameters after the first (controller) as being request parameters
 			}
@@ -336,8 +336,8 @@ class Framework {
 
 		//print "DEBUG:\nController: $controller_name; Request: $request_name; Parameters:"; var_dump($parameters); exit; // MCT XXX
 
-		// The 'resource' controller is built-in for getting resource files (css, javascript, images, etc)
-		if( $controller_name == 'resource' ) {
+		// The 'resources' controller is built-in for getting resource files (css, javascript, images, etc)
+		if( $controller_name == 'resources' ) {
 			$controller_name = strtolower( $request_name );
 			$file_name = trim( strtolower( substr( $this->identity->request_path, strlen( "resource/$controller_name/" ) ) ), '/' );
 			$this->page_wrapping = 'none';
