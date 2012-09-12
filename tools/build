@@ -32,7 +32,8 @@ foreach( $apskel_files as $file ) {
 	if( substr( $file, 0, 12) == 'application_' ) { $version = substr( $file, 12 ); }
 }
 
-require_once( '../application_0.0/modules/user/user_registration.php' );  // TEMP
+//require_once( '../application_0.0/modules/user/user_registration.php' );  // TEMP
+//require_once( '/var/www/workmosaic/application/1.0/agent/AgentRegistration.php' );  // TEMP
 
 mainScreen();
 
@@ -725,8 +726,8 @@ function buildModule( $version, $module_name ) {
 			$registration .= "\t\t\t\tarray( 'name' => '{$name}', 'required' => {$required} , 'default' => {$default}, 'description' => '{$description}' ),\n"; 
 		}
 		$registration .= "\t\t\t)\n";
+		$registration .= "\t\t),\n";
 	}
-	$registration .= "\t\t),\n";
 	$registration .= "\t)\n";
 	$registration .= ");\n";
 	$registration .= "\n";
@@ -734,13 +735,13 @@ function buildModule( $version, $module_name ) {
 	foreach( $tables as $table_name => $table ) {
 		$registration .= "\t'{$table_name}' => array(\n";
 		foreach( $table as $field_name => $field ) {
-			$type    = $field['type'];
-			$default = isset( $field['default'] ) ? $field['default'] : 'null' ;
+			$type    = str_replace( "'", "\\'", $field['type'] );
+			$default = isset( $field['default'] ) ? ( is_string( $field['default'] ) ? "'{$field['default']}'" : $field['default'] ) : 'null' ;
 			$key     = isset( $field['key'] ) ? "'" . $field['key'] . "'" : 'null';
 			$filter  = isset( $field['filter'] ) ? $field['filter'] : '';
 			$registration .= "\t\t'$field_name' => array( 'type' => '{$type}', 'default' => {$default}, 'key' => $key, 'filter' => '{$filter}' ),\n";
 		}
-		$registration .= "\t\n";
+		$registration .= "\t),\n";
 	}
 	$registration .= ");\n";
 
@@ -787,8 +788,9 @@ function buildModule( $version, $module_name ) {
 	foreach( $requests['requests'] as $request_name => $request ) {
 		$request_name = strtolower( $request_name );
 		$view_name = ucfirst( $request_name );
+		$classifized_view_name = classifize( $request_name );
 		$views .= "\t// View for the {$view_name} Request\n";
-		$views .= "\tpublic function compose{$view_name}( \$param_fields = array() ) {\n";
+		$views .= "\tpublic function compose{$classifized_view_name}( \$param_fields = array() ) {\n";
 		$views .= "\n";
 		$views .= "\t\t// Set parameter defaults;\n";
 		$views .= "\t\t\$title = '{$view_name}';\n";
@@ -826,8 +828,8 @@ function buildModule( $version, $module_name ) {
 	$controllers .= "# {$short_when} ... created.\n";
 	$controllers .= "\n";
 	$controllers .= "require_once('controllers.php');\n";
-	$controllers .= "require_once('modules/{$module_name}/{$module_name}_models.php');\n";
-	$controllers .= "require_once('modules/{$module_name}/{$module_name}_views.php');\n";
+	$controllers .= "require_once('{$module_name}/{$module_name}_models.php');\n";
+	$controllers .= "require_once('{$module_name}/{$module_name}_views.php');\n";
 	$controllers .= "\n";
 	$controllers .= "# Class Declaration for {$module_name} Module's Controllers\n"; 
 	$controllers .= "class {$classifized_module_name}Controllers extends Controllers\n";
@@ -844,8 +846,9 @@ function buildModule( $version, $module_name ) {
 	foreach( $requests['requests'] as $request_name => $request ) {
 		$request_name = strtolower( $request_name );
 		$controller_name = ucfirst( $request_name );
+		$classifized_controller_name = classifize( $request_name );
 		$controllers .= "\t// Controller for the {$controller_name} Request\n";
-		$controllers .= "\tpublic function process{$controller_name}( \$param_fields = array() ) {\n";
+		$controllers .= "\tpublic function process{$classifized_controller_name}( \$param = array() ) {\n";
 		$controllers .= "\n";
 		$controllers .= "\t\t// Set parameter defaults (in case any required ones are missing)\n";
 		$controllers .= "\t\t\$messages = '';\n";
@@ -855,16 +858,35 @@ function buildModule( $version, $module_name ) {
 		}
 		$controllers .= "\n";
 		$controllers .= "\t\t// Convert all request variables to local variables (except for any required by missing)\n";
-		$controllers .= "\t\textract( \$param_fields );\n";
+		$controllers .= "\t\textract( \$param );\n";
 		$controllers .= "\n";
 		$controllers .= "\t\t// Unless a fresh visit to this page, show any missing parameters as warnings.\n";
 		$controllers .= "\t\tif( \$fresh !== true ) { \$param['warnings'] .= \$missing; }\n";
 		$controllers .= "\n";
-		$controllers .= "\t\t// Perform {$controller_name} logic\n";
-		$controllers .= "\t\t// TODO\n";
-		$controllers .= "\n";
-		$controllers .= "\t\t// Compose and Output the View;\n";
-		$controllers .= "\t\treturn \$this->views->compose{$controller_name}( \$param );\n";
+		if( $request_name == 'initialize' ) {
+			$controllers .= "\t\t// Do provided parameters validate?\n";
+			$controllers .= "\t\t\$is_bad = false;\n";
+			$controllers .= "\t\t//TODO: make \$is_bad = true if parameters do not validate\n";
+			$controllers .= "\t\t\n";
+			$controllers .= "\t\tif( !\$is_bad ) {\n";
+			$controllers .= "\t\t\t\$this->models->buildTables( true );\n"; 
+			$controllers .= "\t\t\t\$messages .= 'Initialization of the {$module_name} module was successful. ';\n";
+			$controllers .= "\t\t\t\$this->framework->logMessage( \$messages, NOTICE );\n";
+			$controllers .= "\t\t\treturn \$messages; // TODO: in this case, return what view?\n"; 
+			$controllers .= "\t\t}\n";
+			$controllers .= "\t\telse {\n";
+			$controllers .= "\t\tif( \$messages !== '' ) { \$param['messages'] = \$messages; }\n";
+			$controllers .= "\t\treturn \$this->views->compose{$classifized_controller_name}( \$param );\n";
+			$controllers .= "\t\t}\n";
+			$controllers .= "\t\t\n";
+		} 
+		else {
+			$controllers .= "\t\t// Perform {$controller_name} logic\n";
+			$controllers .= "\t\t// TODO\n";
+			$controllers .= "\n";
+			$controllers .= "\t\t// Compose and Output the View;\n";
+			$controllers .= "\t\treturn \$this->views->compose{$classifized_controller_name}( \$param );\n";
+		}
 		$controllers .= "\t} // end of process{$controller_name} controller\n";
 		$controllers .= "\n";
 	}
@@ -884,7 +906,6 @@ function buildModule( $version, $module_name ) {
 	file_put_contents( "../application_{$version}/modules/{$module_name}/{$module_name}_models.php", $models );
 	file_put_contents( "../application_{$version}/modules/{$module_name}/{$module_name}_views.php", $views );
 	file_put_contents( "../application_{$version}/modules/{$module_name}/{$module_name}_controllers.php", $controllers );
-	exit;
 
 	return "The \"{$module_name}\" Module successfully built.";
 }
@@ -897,3 +918,11 @@ function input( $output ) {
 	return $input;
 }
 
+function classifize( $name ) {
+	$words = explode( '_', $name );
+	$classifized_name = '';
+	foreach( $words as $word ) {
+		$classifized_name .= ucfirst( $word );
+	}
+	return $classifized_name;
+}

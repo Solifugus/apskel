@@ -8,45 +8,13 @@ This is the root directory for this installation of the Apskel framework.
 should exist under the apskel/ directory:
 
 - apskel/notes.txt
-
-  This file provides generally useful notes on what resides within the directory
-where it resides.
-
 - apskel/README.dm
-
-  Github requires a README.dm file to generally describe the project.  So this
-file generally describes the Apskel project.
-
 - apskel/LICENSE
-
-  The contents of this file should be the GNU LGPLv2 from the Free Software
-Foundation.  It is the license underwhich the entire Apskel framework is
-distributed.
-
 - apskel/webroot/
-
-  The webserver should serve files under this directory only.
-
 - apskel/identification.php
-
-  The domain name (or substring thereof) to environment and version mapping
-should be specified in this file.   
-
 - apskel/environments_{version}/
-
-  For each application version, there should be a different set of settings
-files--one for each environment.  
-
 - apskel/application_{version}/
-
-  One for each application version, each of these directories should hold all
-the code, structure, and theming files relevant to it.
-
 - apskel/tools/
-
-  This directory should hold command line executable tools for setup,
-configuration, and development in the Apskel framework.
-
 
 ==================
 git Hub
@@ -58,4 +26,6 @@ git commit -m 'First Commit.'
 git remote add origin https://github.com/Solifugus/apskel.git
 git push -u origin master
 
+TODO:
+  - tools/build -- (1) deal with underscores in request names; (2) add table initialization code
 
