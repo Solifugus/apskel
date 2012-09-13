@@ -16,6 +16,41 @@ should exist under the apskel/ directory:
 - apskel/application_{version}/
 - apskel/tools/
 
+
+============================
+The Request Handling Process
+
+  1. index.php: A request is received.
+     - The request may come from the webserver or command line parameters, 
+       imitating a web request.
+
+  2. identification.php: The identity (application version and environment) are
+     determined from the domain name used.
+
+  3. framework.php: The request parameters are cleaned, translated, and sent to
+     the relevant controller.
+     - The request may be called here either from step 2 or from a controller
+       in step 4 (an internal sub-request).
+
+  4. {module}_controller: The controller performs its designed actions and
+     returns a set of response parameters to the framework.
+     - A controller may make calls through the same module's controller or
+       through sub-requests to other controllers via the framework (i.e.
+       sending it back to step 3, recursively)
+
+  5. framwork.php: The response parameters are formatted for the requester and
+     returned thereto.  
+     - If a response_format parameter is given, it will specify the formatting
+       to use.  Otherwise, a default format will be selected depending on the
+       requester type (i.e. http or https as html, or cli as text)
+     - Possible values for the response_format parameter include:
+       (a) text -- parameter name + colon + value + new line
+       (b) xml -- value inside tag with parameter name (periods for tag levels)
+       (c) html -- same as text, except in table
+       (d) view={view name} -- uses named module view
+       (e) template={template name} -- uses module template
+
+
 ==================
 git Hub
 
@@ -25,7 +60,4 @@ git add -A *
 git commit -m 'First Commit.'
 git remote add origin https://github.com/Solifugus/apskel.git
 git push -u origin master
-
-TODO:
-  - tools/build -- (1) deal with underscores in request names; (2) add table initialization code
 

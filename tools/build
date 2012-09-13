@@ -793,8 +793,8 @@ function buildModule( $version, $module_name ) {
 		$views .= "\tpublic function compose{$classifized_view_name}( \$param_fields = array() ) {\n";
 		$views .= "\n";
 		$views .= "\t\t// Set parameter defaults;\n";
-		$views .= "\t\t\$title = '{$view_name}';\n";
-		$views .= "\t\t\$messages = 'Welcome to the {$view_name} page.';\n";
+		$views .= "\t\t\$title = '{$module_name} {$view_name}';\n";
+		$views .= "\t\t\$messages = 'Welcome to the {$module_name} {$view_name} page.';\n";
 		$views .= "\t\t\$warnings = '';\n";
 		foreach( $request['parameters'] as $parameter ) {
 			$views .= "\t\t\${$parameter['name']} = '';\n";
