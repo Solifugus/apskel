@@ -56,8 +56,8 @@ class AgentControllers extends Controllers
 		// Set parameter defaults (in case any required ones are missing)
 		$messages = '';
 		$warnings = '';
-		$type = '';
-		$topic = '';
+		$type     = '';
+		$topic    = '';
 		$passcode = '';
 
 		// Convert all request variables to local variables (except for any required by missing)
@@ -67,11 +67,13 @@ class AgentControllers extends Controllers
 		if( $fresh !== true ) { $param['warnings'] .= $missing; }
 
 		// Perform Interface logic
-		// TODO
+		$param['response_format'] = 'template=interface.html';
+		$param['title']           = 'Conversational Interface';
+		$param['transcript']      = '';  // any initial agent response statement
 
 		// Compose and Output the View;
-		return array( 'response_format' => 'xml', 'field1' => 'one', 'field2' => 'two' );
-		return $this->views->composeInterface( $param );
+		$format = array( 'format' => 'template', 'template_file' => 'interface.html' );
+		return array( $param, $format );
 	} // end of processInterface controller
 
 	// Controller for the Converse Request

@@ -14,6 +14,12 @@
 // 2012-08-31 MCT Added "fresh" default parameter to all requests and showDebug() function
 // 2012-09-14 MCT Changed to controllers just return arrays that framework passes on to views (for easier sub-requests, automatic views, etc.)
 
+// General TODO's:
+// 1. Build in the proper API building/presenting mechanism (not just showing on error, as is now in place).
+// 2. Add a standard controller return parameter set for specifying what resources to put in "<head>" of HTML documents
+// 3. Implement recursive section mechanics in template production ({{section_name:begin}} to {{section_name:end}})
+// 4. At some point, change the logging system to have multiple types per message and way to select which types to log/show/email by environment
+
 // Global Defines for Log Message Types
 define('FATAL',    0);
 define('CRITICAL', 1);
@@ -436,11 +442,11 @@ class Framework {
 		}
 		else {
 			// If a Good Request, Return the Following..
-			$response = $controller->$request_method_name( $sanitized_parameters, $missing_parameters ); 
+			list( $response, $format ) = $controller->$request_method_name( $sanitized_parameters, $missing_parameters ); 
 
 			// IF the response wasn't an array then presume it is an HTML string 
 			if( !is_array( $response ) ) {
-				$response = array( 'response_format' => 'direct-html', 'response_text' => $response );
+				$format = array( 'format' => 'direct-html' );
 			}
 		}
 
@@ -448,29 +454,25 @@ class Framework {
 		if( !$is_main_request ) { return $response; };
 
 		// If response format is not specified, default according to the request protocol
-		if( !isset( $response['response_format'] ) ) {
+		if( !isset( $format['format'] ) ) {
 			switch( strtolower( trim( $this->identity->request_protocol ) ) ) {
 				case 'http':
 				case 'https':
-					$response['response_format'] = 'html';
+					$format['format'] = 'html';
 					break;
 
 				case 'cli':
-					$response['response_format'] = 'text';
+					$format['format'] = 'text';
 					break;
 
 				default: 
-					$response['response_format'] = 'text';
+					$format['format'] = 'text';
 					$this->logMessage( "Framework could not determine response format (protocol was \"{$this->identity->request_protocol}\" )", WARNING );
 					break;
 			}
 		}
 
-		$response_format = $response['response_format'];
-		if( strpos( $response_format, '=' ) !== false ) {
-			list( $response_format, $specifier ) = explode( '=', $response_format );
-		}
-		switch( strtolower( trim ( $response_format ) ) ) {
+		switch( strtolower( trim ( $format['format'] ) ) ) {
 			case 'text':
 				return $this->formatAsText( $response, $is_main_request );
 				break;
@@ -481,13 +483,13 @@ class Framework {
 				return $this->formatAsXml( $response, $is_main_request );
 				break;
 			case 'view':
-				return $this->formatAsView( $response, $module_name, $specifier, $is_main_request );
+				return $this->formatAsView( $response, $module_name, $format['view_file'], $is_main_request );
 				break;
 			case 'template':
-				return $this->formatAsTemplate( $response, $module_name, $specifier, $is_main_request );
+				return $this->formatAsTemplate( $response, $module_name, $format['template_file'], $is_main_request );
 				break;
 			case 'direct-html':
-				return "<html>\n<body>\n{$response['response_text']}\n</body>\n</html>\n";
+				return wrapAsHtml( $response );
 				break;
 			default:
 				$this->logMessage( "A unrecognized response format was specified.", WARNING );
@@ -496,6 +498,10 @@ class Framework {
 		} 
 
 	} // End of serviceRequest()
+
+	private function wrapAsHtml( $html ) {
+		return "<!DOCTYPE=html>\n<html>\n<body>\n$html</body>\n</html>\n";
+	}
 
 	private function formatAsText( $response, $is_main_request ) {
 		$view = $this->wrapAssociativeValues( $response, "\t", '', '- ', ': ', "\n", '' );
@@ -535,7 +541,7 @@ class Framework {
 			$views_class_name = $this->getViewsClassName( $module_name );
 			if( !class_exists( $views_class_name ) ) {
 				$request_is_fatal = true;
-				$request_is_fatal_reason = "The \"$module_name\" module's views class is not defined in its code file (~/application_{$this->identity->version}/modules/$views_file_name). ";
+				$request_is_fatal_reason = "The \"{$module_name}\" module's views class is not defined in its code file (~/application_{$this->identity->version}/modules/{$views_file_name}). ";
 			}
 			else {
 				// Does the view exist?
@@ -543,7 +549,7 @@ class Framework {
 				$view_method_name = $this->getViewMethodName( $view_name ); 
 				if( !method_exists( $views, $view_method_name ) ) {
 					$request_is_fatal = true;
-					$request_is_fatal_reason = "The \"$module_name\" module's \"$view_method_name\" view method is not defined in the code ($views_file_name). ";
+					$request_is_fatal_reason = "The \"{$module_name}\" module's \"{$view_method_name}\" view method is not defined in the code ({$views_file_name}). ";
 				}
 			}
 		}
@@ -563,8 +569,92 @@ class Framework {
 	}
 
 	private function formatAsTemplate( $response, $module_name, $template_name, $is_main_request ) {
-		// TODO: move templating thing from views superclass to framework.. and use that.
+		// TODO: deal with formatting as main- or sub-request based on $template_name extension for how to wrap 
+		$template = $this->getTemplate( $module_name, $template_name );
+		$searches = array();
+		$replacements = array();
+		foreach( $response as $field => $value ) {
+			if( is_array( $value ) ) {
+				// TODO: make $field specify subsection to repeat once for each sub-array element; template subsections looke like {{section_name:begin}} .. {{section_name:end}}
+				$value = '';
+			}
+			if( is_bool( $value ) ) {
+				if( $value ) { $value = 'True'; }
+				else { $value = 'False'; }
+			}
+			if( is_null( $value ) ) {
+				$value = 'Null';
+			}
+			$searches[]     = '{{' . $field . '}}';
+			$replacements[] = $value;
+		}
+		$view = preg_replace( '/{{.*}}/', '', str_replace( $searches, $replacements, $template ) );
+
+		// If this is a main request then wrap this view up before returning it..
+		if( $is_main_request ) {
+			$template_extension = substr( strrchr( trim( $template_name ), '.' ), 1);
+			switch( $template_extension ) {
+				case 'html':
+					$view = $this->wrapAsHtml( $view );
+					break;
+	
+				// TODO: extend this as it makes sense to do so..
+	
+				default:
+					// if unknown or non-existent then just do nothing..
+					break;
+			} 
+		}
+		return $view;
 	}
+
+	// Get template file name (select in order of priority from first to last: environment, application, module)
+	private function getTemplate( $module_name, $template_name ) {
+		$environment_template_path = "../templates/{$this->identity->environment}/" . $template_name;
+		$application_template_path = '../templates/' . $template_name;
+		$module_template_path      = $module_name . '/templates/' . $template_name;
+		if( file_exists( $environment_template_path ) ) {
+			return file_get_contents( $environment_template_path );
+		}
+		elseif( file_exists( $application_template_path ) ) {
+			return file_get_contents( $application_template_path );
+		}
+		elseif( file_exists( $module_template_path ) ) {
+			return file_get_contents( $module_template_path );
+		}
+	}
+
+	// Extract Controller's Views From Files Into Associative Array
+	public function getListOfViewTemplates($param_view_directory)
+	{
+		$this->templates = array();
+
+		// For each file in controller directory with ".view." in its name..
+		if($open_directory = opendir($param_view_directory)) {
+ 			while (($file_name = readdir($open_directory)) !== false) {
+ 				if(strpos($file_name,'.view.')) {
+					// For each record in the file
+					$open_file = fopen("{$param_view_directory}/$file_name","r"); // TODO: trap error
+ 					$current_view = '';
+					while(!feof($open_file)) {
+						$line = rtrim(fgets($open_file));
+
+						// If "~view_name:" pattern, Mark new current view
+						if(preg_match('/~([A-Za-z0-9_ ]+):/',$line,$match) > 0)  { // TODO: make this only work if line starts with it..
+							$current_view = trim($match[0],' ~:');
+							$this->templates[$current_view] = '';
+							continue;
+						}
+
+						// If in a view, add line to current view
+						if($current_view != '') { $this->templates[$current_view] .= $line; }
+					}
+				}
+			}
+			closedir($open_directory);
+		} // TODO: add else condition, if failed to open directory..
+	} // End of getListOfViewTemplates() 
+
 
 	public function wrapAssociativeValues( $response, $increment, $waybefore, $justbefore, $between, $justafter, $wayafter ) {
 		$view = $waybefore;
@@ -944,7 +1034,7 @@ EndOfSQL;
 		// Order of presidence: Environment should overrides application which overrrides module.. (except for css, it's a concatenation order)
 		$resource_type             = strtolower( substr( strrchr( $file_name, '.' ), 1 ) );
 		$module_resource_path      = $module . '/resources/' . $file_name;
-		$environment_resource_path = "../resources-{$this->identity->environment}/" . $file_name;
+		$environment_resource_path = "../resources/{$this->identity->environment}/" . $file_name;
 		$application_resource_path = '../resources/' . $file_name;
 
 		//print "CWD: " . getcwd() . "<br/>\n";
