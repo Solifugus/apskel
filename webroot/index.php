@@ -16,5 +16,5 @@ $identity = new Identity();
 // Process the Request
 require_once("../framework.php");
 $framework = new Framework( $identity );
-echo $framework->getResource();
+echo $framework->serviceRequest();
 

@@ -61,3 +61,6 @@ git commit -m 'First Commit.'
 git remote add origin https://github.com/Solifugus/apskel.git
 git push -u origin master
 
+
+TODO:
+  - in framework, convert "controller" references to "module"

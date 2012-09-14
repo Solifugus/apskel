@@ -70,6 +70,7 @@ class AgentControllers extends Controllers
 		// TODO
 
 		// Compose and Output the View;
+		return array( 'response_format' => 'xml', 'field1' => 'one', 'field2' => 'two' );
 		return $this->views->composeInterface( $param );
 	} // end of processInterface controller
 

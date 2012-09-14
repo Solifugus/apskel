@@ -12,6 +12,7 @@
 // 2012-04-17 MCT Added framework for getting resources, according to environment/hierarchy
 // 2012-05-02 MCT Built new URI extraction functions and landing page by environment config
 // 2012-08-31 MCT Added "fresh" default parameter to all requests and showDebug() function
+// 2012-09-14 MCT Changed to controllers just return arrays that framework passes on to views (for easier sub-requests, automatic views, etc.)
 
 // Global Defines for Log Message Types
 define('FATAL',    0);
@@ -27,7 +28,7 @@ class Framework {
 	// Request Settings
 	protected $session_id;             // current session ID (from php or artificially maintained via cli)
 	protected $request_session_id;     // identifies the current session
-	protected $controller_name;
+	protected $module_name;
 	protected $request_name;
 		
 	// Application Settings
@@ -35,7 +36,7 @@ class Framework {
 	protected $application_environments;  // settings for all application environments
 	protected $application_log_path;      // path to where environment log files are
 	protected $application_data_path;     // path to where environment data sub-directories are
-	protected $application_controllers;   // registration of controllers, requests, and their parameters
+	protected $application_modules;       // registration of module controllers, requests, and their parameters
 
 	// Environment Settings
 	protected $environment_name;          // name of this environment
@@ -51,28 +52,35 @@ class Framework {
 	// Database Settings
 	protected $database_connection = null; // current request's PDO database connection
 
-	// Internal Settings
-	protected $page_wrapping = 'html';     // 'html' (default), 'none', exensible..
-
 	// Request Processing Related Methods
-	public function getControllerName() {
-		return strtolower($this->getClassifizedName( $this->controller_name ));
+	public function getModuleName() {
+		return strtolower($this->getClassifizedName( $this->module_name ));
 	}
 
-	public function getControllerFileName( $param_controller_name = null ) {
-		if( $param_controller_name == null ) { $controller_name = $this->getControllerName(); }
-		else                                 { $controller_name = $param_controller_name; }
-		return $this->getVariablizedName( $controller_name) . '/' . $this->getVariablizedName( $controller_name . '_controllers' ) . '.php';
+	public function getControllerFileName( $param_module_name = null ) {
+		if( $param_module_name == null ) { $module_name = $this->getModuleName(); }
+		else                                 { $module_name = $param_module_name; }
+		return $this->getVariablizedName( $module_name) . '/' . $this->getVariablizedName( $module_name . '_controllers' ) . '.php';
 	}
 
-	public function getControllerRegistrationFileName( $param_controller_name = null ) {
-		if( $param_controller_name == null ) { $controller_name = $this->getControllerName(); }
-		else                                 { $controller_name = $param_controller_name; }
-		return $this->getVariablizedName( $controller_name) . '/' . $this->getVariablizedName( $controller_name . '_registration' ) . '.php';
+	public function getViewsFileName( $param_module_name = null ) {
+		if( $param_module_name == null ) { $module_name = $this->getModuleName(); }
+		else                             { $module_name = $param_module_name; }
+		return $this->getVariablizedName( $module_name) . '/' . $this->getVariablizedName( $module_name . '_views' ) . '.php';
 	}
 
-	public function getControllerClassName( $param_controller_name ) {
-		return $this->getClassifizedName( $param_controller_name ) . 'Controllers';
+	public function getModuleRegistrationFileName( $param_module_name = null ) {
+		if( $param_module_name == null ) { $module_name = $this->getModuleName(); }
+		else                                 { $module_name = $param_module_name; }
+		return $this->getVariablizedName( $module_name) . '/' . $this->getVariablizedName( $module_name . '_registration' ) . '.php';
+	}
+
+	public function getControllerClassName( $param_module_name ) {
+		return $this->getClassifizedName( $param_module_name ) . 'Controllers';
+	}
+
+	public function getViewsClassName( $param_views_name ) {
+		return $this->getClassifizedName( $param_views_name ) . 'Views';
 	}
 
 	public function getRequestName() {
@@ -80,7 +88,7 @@ class Framework {
 	}
 
 	public function getRequestMethodName( $param_request_name = null) {
-		if( $param_request_name == null ) { $request_name = $this->getControllerName(); }
+		if( $param_request_name == null ) { $request_name = $this->getModuleName(); }
 		else                                 { $request_name = $param_request_name; }
 		return 'process' . ucfirst( $this->getFunctionizedName( $request_name ) );
 	}
@@ -151,22 +159,22 @@ class Framework {
 		return $this->databases[$id]['usage'];
 	}
 	
-	public function getUriController( $uri ) {
-		$controller_request = preg_replace( '/\?.*$/', '', $uri );
-		list( $controller, $request ) = @explode( '/', $controller_request, 2 );
-		return $controller;
+	public function getUriModule( $uri ) {
+		$module_request = preg_replace( '/\?.*$/', '', $uri );
+		list( $module, $request ) = @explode( '/', $module_request, 2 );
+		return $module;
 	}
 	
 	public function getUriRequest( $uri ) {
-		$controller_request = preg_replace( '/\?.*$/', '', $uri );
-		list( $controller, $request ) = @explode( '/', $controller_request, 2 );
+		$module_request = preg_replace( '/\?.*$/', '', $uri );
+		list( $module, $request ) = @explode( '/', $module_request, 2 );
 		return $request;
 	}
 
 	public function getUriParameters( $uri ) {
 		$request_parameters = array();
 		if( strpos( $uri, '?' ) !== false ) {
-			list( $controller_request, $parameters ) = @explode('?', $uri, 2);
+			list( $module_request, $parameters ) = @explode('?', $uri, 2);
 			$parameters         = urldecode($parameters);
 			$parameters         = explode('&', $parameters);
 			foreach ($parameters as $parameter) {
@@ -182,7 +190,7 @@ class Framework {
 		ini_set( 'display_errors', 1 );
 		error_reporting( E_ALL );
 		$this->identity = $identity;
-		$this->registration = array();          // prepares place to hold controller registrations relevant for this request
+		$this->registration = array();          // prepares place to hold module registrations relevant for this request
 		$this->determineSessionVariables();
 		$this->determineRequestDetails();
 	}
@@ -215,8 +223,8 @@ class Framework {
 			# Can we get the user?
 			# TODO: shibboleth or other methods..
 			
-			# Set the landing controller/request as default
-			$_SESSION['controller'] = $this->getUriController( $this->identity->settings['landing_page'] ); // controller last set as session default
+			# Set the landing module/request as default
+			$_SESSION['module'] = $this->getUriModule( $this->identity->settings['landing_page'] ); // module last set as session default
 			$_SESSION['request']    = $this->getUriRequest( $this->identity->settings['landing_page'] );    // request last se as session default
 
 			// current session output format, unless overridden
@@ -254,9 +262,9 @@ class Framework {
 		if ( $this->identity->request_path > '' ) {
 			$uri_parameters = explode('/', $this->identity->request_path);
 
-			// Get controller name, if in URL
+			// Get module name, if in URL
 			if (count($uri_parameters > 0)) {
-				$controller = $uri_parameters[0];
+				$module = $uri_parameters[0];
 			}
 
 			// Get request name, if in URL
@@ -264,25 +272,25 @@ class Framework {
 				$request = $uri_parameters[1];
 			}
 
-			// Get array element number of first parameter (presuming first two are, indeed, controller and request)
+			// Get array element number of first parameter (presuming first two are, indeed, module and request)
 			if ( count($uri_parameters) > 2 ) {
 				$current_param = 2;
 			} else {
 				$current_param = count($uri_parameters) - 1;
 			}
 
-			// If $controller doesn't exist then interpret as a parameter and revert to the session default controller/request..
-			$controller = strtolower($controller);
-			if ( !$this->isController( $controller ) && $controller !== 'resources' ) {
-				$controller    = $_SESSION['controller'];
+			// If $module doesn't exist then interpret as a parameter and revert to the session default module/request..
+			$module = strtolower($module);
+			if ( !$this->isModule( $module ) && $module !== 'resources' ) {
+				$module        = $_SESSION['module'];
 				$request       = $_SESSION['request'];
 				$current_param = 0; // revert to all uriParameters being request parameters
 			}
 			
-			// if $request doesn't exist under $controller then interpret as a parameter and revert to the controller's 'default' request..
-			if( !isset( $request ) && $controller !== 'resources' ) {
+			// if $request doesn't exist under $module then interpret as a parameter and revert to the module's 'default' request..
+			if( !isset( $request ) && $module !== 'resources' ) {
 				$request       = $_SESSION['request'];
-				$current_param = 1; // revert to all uriParameters after the first (controller) as being request parameters
+				$current_param = 1; // revert to all uriParameters after the first (module) as being request parameters
 			}
 			
 			// Collect request parameters and override web request ($_REQUEST) parameters with them..
@@ -298,77 +306,66 @@ class Framework {
 			}
 		}
 
-		// If still no controller or request then use defaults from session (which are initially landing defaults)
-		if(!isset($controller) || $controller == '') {
-			$controller = $_SESSION['controller'];
+		// If still no module or request then use defaults from session (which are initially landing defaults)
+		if(!isset($module) || $module == '') {
+			$module = $_SESSION['module'];
 		}
 		if(!isset($request) || $request == '') {
 			$request = $_SESSION['request'];
 		}
 
 		
-		// Set Controller and Request Related Properties
-		$this->controller_name = $controller;  // controller name 
+		// Set Module and Request Related Properties
+		$this->module_name     = $module;  // module name 
 		$this->request_name    = $request;     // request name
 	} // End of determineRequestDetails() 
 
-	// *** Top level request response method
-	public function getResource() {
-		$page_content = $this->getView();
-		switch( $this->page_wrapping ) {
-			case 'none':
-				return $page_content;
-				break;
+	// *** Execute the Module's Appropriate Controller then Format Response and Return to Requestor 
+	public function serviceRequest( $module_name = null, $request_name = null, $parameters = null ) { 
 
-			case 'html':
-			default:
-				return "<html>\n<body>" . $page_content . "\n</body>\n</html>\n"; 
-				
-		}
-	}
+		// Is this the main request (true) or a sub-request (false)
+		if( $module_name === null && $request_name === null && $parameters === null ) { $is_main_request = true; }
+		else { $is_main_request = false; }
 
-	// *** Execute the Controller and Return the View
-	public function getView( $controller_name = null, $request_name = null, $parameters = null ) { 
 		// Default to the current web request, else explicitly specified request (can be a subrequest)
-		if( $controller_name === null ) { $controller_name  = $this->controller_name; }
-		if( $request_name    === null ) { $request_name     = $this->request_name; }
-		if( $parameters      === null ) { $parameters       = $_REQUEST; }
+		if( $module_name === null )     { $module_name   = $this->module_name; }
+		if( $request_name    === null ) { $request_name  = $this->request_name; }
+		if( $parameters      === null ) { $parameters    = $_REQUEST; }
 
-		//print "DEBUG:\nController: $controller_name; Request: $request_name; Parameters:"; var_dump($parameters); exit; // MCT XXX
+		//print "DEBUG:\nModule: $module_name; Request: $request_name; Parameters:"; var_dump($parameters); exit; 
 
-		// The 'resources' controller is built-in for getting resource files (css, javascript, images, etc)
-		if( $controller_name == 'resources' ) {
-			$controller_name = strtolower( $request_name );
-			$file_name = trim( strtolower( substr( $this->identity->request_path, strlen( "resource/$controller_name/" ) ) ), '/' );
-			$this->page_wrapping = 'none';
-			return $this->getResourceFile( $file_name, $controller_name ); 
+		// The 'resources' module is built-in to the framework for getting resource files (css, javascript, images, etc)
+		if( $module_name == 'resources' ) {
+			$module_name = strtolower( $request_name );
+			$file_name = trim( strtolower( substr( $this->identity->request_path, strlen( "resource/$module_name/" ) ) ), '/' );
+			return $this->getResourceFile( $file_name, $module_name ); 
 		}
 
 		// Begin with the presumption that the request is good
 		$request_is_fatal = false;
 		$request_is_fatal_reason = '';
 		
-		// Get Controller's Registration
-		$registration = $this->getControllerRequests( $controller_name );
+		// Get Module's Registration
+		$registration = $this->getModuleRequests( $module_name );
 		if( $registration === null ) {
 			$request_is_fatal = true;
-			$registration_file_name = $this->getControllerRegistrationFileName( $controller_name );
-			$request_is_fatal_reason .= "There is no registration file for the \"$controller_name\" controller (\"~/application_{$this->identity->version}/modules/$registration_file_name\"). "; 
+			$registration_file_name = $this->getModuleRegistrationFileName( $module_name );
+			$request_is_fatal_reason .= "There is no registration file for the \"$module_name\" module (\"~/application_{$this->identity->version}/modules/$registration_file_name\"). "; 
 		}
 
 		$sanitized_parameters  = array();  // array to collect sanitized request parameters provided and/or their registered defaults
 		$missing_parameters    = '';       // place to collect warnings on missing required request parameters (if any)
 
-		// Does the request exist under the controller?
+		// Does the request exist under the module?
 		if( !isset( $registration['requests'][$request_name] ) ) {
 			$request_is_fatal = true;
-			$request_is_fatal_reason .= "The \"$request_name\" request is not registered under the \"$controller_name\" controller.";
+			$request_is_fatal_reason .= "The \"$request_name\" request is not registered under the \"$module_name\" module.";
 		}
 		else {
 			// Does the registration file look corrupted?
 			if( !isset( $registration['requests'][$request_name]['parameters'] ) || !is_array( $registration['requests'][$request_name]['parameters'] ) ) {
 				$request_is_fatal = true;
-				$request_is_fatal_reason .= "The \"$controller_name\"'s \"$request_name\" request has malformed parameter registrations.";
+				$request_is_fatal_reason .= "The \"$module_name\"'s \"$request_name\" request has malformed parameter registrations.";
 			}
 			else {
 				// Collect request parameters according to the registration
@@ -394,19 +391,19 @@ class Framework {
 		if( !isset( $_REQUEST['fresh'] ) ) { $sanitized_parameters['fresh'] = true; }
 		else                               { $sanitized_parameters['fresh'] = addslashes( $_REQUEST['fresh'] ); }
 
-		// Does the controller's code file actually exist?
-		$controller_file_name = $this->getControllerFileName( $controller_name );
+		// Does the module's controllers file actually exist?
+		$controller_file_name = $this->getControllerFileName( $module_name );
 		if( !file_exists( $controller_file_name ) ) {
 			$request_is_fatal = true;
-			$request_is_fatal_reason = "The \"$controller_name\" controller has no associated programming code (~/application_{$this->identity->version}/modules/$controller_file_name). ";
+			$request_is_fatal_reason = "The \"$module_name\" module has no associated programming code (~/application_{$this->identity->version}/modules/$controller_file_name). ";
 		}
 		else {
 			// Does the controller's class exist?
 			require_once( $controller_file_name );
-			$controller_class_name = $this->getControllerClassName( $controller_name );
+			$controller_class_name = $this->getControllerClassName( $module_name );
 			if( !class_exists( $controller_class_name ) ) {
 				$request_is_fatal = true;
-				$request_is_fatal_reason = "The \"$controller_name\" controller's class is not defined in its code file (~/application_{$this->identity->version}/modules/$controller_file_name). ";
+				$request_is_fatal_reason = "The \"$module_name\" module's class is not defined in its code file (~/application_{$this->identity->version}/modules/$controller_file_name). ";
 			}
 			else {
 				// Does the request's method exist?
@@ -414,95 +411,193 @@ class Framework {
 				$request_method_name = $this->getRequestMethodName( $request_name );
 				if( !method_exists( $controller, $request_method_name ) ) {
 					$request_is_fatal = true;
-					$request_is_fatal_reason = "The \"$controller_name\" controller's \"$request_method_name\" method is not defined in the code (~/application_{$this->identity->version}/modules/$controller_file_name). ";
+					$request_is_fatal_reason = "The \"$module_name\" module's \"$request_method_name\" method is not defined in the code (~/application_{$this->identity->version}/modules/$controller_file_name). ";
 				}
 			}
 			
 		}
 
-		// If a Bad Request, Return the help for the request or else help for the entire controller.. 
+		// Get the response (either error or whatever the controller returns)
 		if( $request_is_fatal ) {
-			$view = $this->getCss();
-			$view .= "<div id=\"bad_request_view_wrapper\" class=\"view_wrapper\">\n"; 
-			$view .= "<div id=\"message_area\">\n";
-			$view .= "<span id=\"warnings\">The web request failed: $request_is_fatal_reason</span><br/>\n";
-			$view .= "</div>\n";
-			$view .= "Controller: \"{$this->controller_name}\"<br/>\n";
-			$view .= "Description:<br\n{$registration['description']}\n\n";
+			$response = array();
+			$response['error'] = $request_is_fatal_reason;
+			$response['module_name'] = $this->module_name;
+			$response['module_description'] = $registration['description'];
 			if( isset( $registration['requests'][$request_name] ) ) {
-				$view .= $this->getRequestHelp( $request_name, $registration['requests'][$request_name] );
+				$response['help'] = getRequestHelp( $request_name, $registration['requests'][$request_name] );
 			}
 			else {
 				foreach( $registration['requests'] as $request => $details ) {
-					$view .= $this->getRequestHelp( $request, $details );
+					$response['help'][$request] = $this->getRequestHelp( $request, $details );
 				}
 			}
-			$view .= "</div>\n";
 
-			$this->logMessage( "Failed to process request: {$request_is_fatal_reason}.\n", NOTICE );
-			return $view;
+			$this->logMessage( "Failed to process request: {$request_is_fatal_reason}.", NOTICE );
 		}
 		else {
 			// If a Good Request, Return the Following..
-			return $controller->$request_method_name( $sanitized_parameters, $missing_parameters );  // TODO: deal with output format mechanism
+			$response = $controller->$request_method_name( $sanitized_parameters, $missing_parameters ); 
+
+			// IF the response wasn't an array then presume it is an HTML string 
+			if( !is_array( $response ) ) {
+				$response = array( 'response_format' => 'direct-html', 'response_text' => $response );
+			}
 		}
 
-	} // End of getView()
+		// If this is a sub-request, just return the raw response array
+		if( !$is_main_request ) { return $response; };
 
-	private function getRequestHelp( $request, $details ) {
-		$view = "\t* Request \"{$request}\" -- {$details['description']}<br/>\n";
-		foreach( $details['parameters'] as $parameter ) {
-			$view .= "\t\t- \"{$parameter['name']}\": {$parameter['description']}<br/>\n";
-			if( $parameter['default'] === null ) {
-				$default = "Must be supplied<br/>\n";
+		// If response format is not specified, default according to the request protocol
+		if( !isset( $response['response_format'] ) ) {
+			switch( strtolower( trim( $this->identity->request_protocol ) ) ) {
+				case 'http':
+				case 'https':
+					$response['response_format'] = 'html';
+					break;
+
+				case 'cli':
+					$response['response_format'] = 'text';
+					break;
+
+				default: 
+					$response['response_format'] = 'text';
+					$this->logMessage( "Framework could not determine response format (protocol was \"{$this->identity->request_protocol}\" )", WARNING );
+					break;
 			}
-			else {
-				$default = "When not supplied, defaults to  \"{$parameter['default']}\"";
-			}
-			$view .="\t\t\t$default<br/>\n";
 		}
+
+		$response_format = $response['response_format'];
+		if( strpos( $response_format, '=' ) !== false ) {
+			list( $response_format, $specifier ) = explode( '=', $response_format );
+		}
+		switch( strtolower( trim ( $response_format ) ) ) {
+			case 'text':
+				return $this->formatAsText( $response, $is_main_request );
+				break;
+			case 'html':
+				return $this->formatAsHtml( $response, $is_main_request);
+				break;
+			case 'xml':
+				return $this->formatAsXml( $response, $is_main_request );
+				break;
+			case 'view':
+				return $this->formatAsView( $response, $module_name, $specifier, $is_main_request );
+				break;
+			case 'template':
+				return $this->formatAsTemplate( $response, $module_name, $specifier, $is_main_request );
+				break;
+			case 'direct-html':
+				return "<html>\n<body>\n{$response['response_text']}\n</body>\n</html>\n";
+				break;
+			default:
+				$this->logMessage( "A unrecognized response format was specified.", WARNING );
+				return $this->formatAsText( $response, $is_main_request );
+				break;
+		} 
+
+	} // End of serviceRequest()
+
+	private function formatAsText( $response, $is_main_request ) {
+		$view = $this->wrapAssociativeValues( $response, "\t", '', '- ', ': ', "\n", '' );
 		return $view;
 	}
 
-	private function getCss() {
-               return <<<EndOfCSS
-                        <style type="text/css">
-                                body { background-color: #009999; }
-                                .view_wrapper { display: block; width: 640px; padding: 5px; border: 1px; border: solid 1px #85b1de; border-radius: 20px; margin-left: auto; margin-right: auto; background-
-                                #title { display: block; width: 100%; font-size: 16px; text-align: center; font-weight: bold; }
-                                .label { display: inline-block; width: 100px;  }
-                                .input { width: 150px;  border: solid 1px #85b1de; background-color: #EDF2F7; }
-                                .input:hover { border-color: orange; }
-                                .warnings { color: #FF0000; font-weight: bold; }
-                                .messages { color: #000000; }
-                                .message_area { border: 1px solid black; width: 95%; border-radius: 10px; padding: 10px; background-color: #AAAAFF; color: #000000; }
-                                .button {
-                                        -moz-box-shadow:inset 0px 1px 0px 0px #caefab;
-                                        -webkit-box-shadow:inset 0px 1px 0px 0px #caefab;
-                                        box-shadow:inset 0px 1px 0px 0px #caefab;
-                                        background-color:transparent;
-                                        -moz-border-radius:6px;
-                                        -webkit-border-radius:6px;
-                                        border-radius:6px;
-                                        border:1px solid #85b1de;
-                                        display:inline-block;
-                                        color: #0000ff;
-                                        font-family:arial;
-                                        font-size:15px;
-                                        font-weight:bold;
-                                        padding:6px 24px;
-                                        text-decoration:none;
-                                        text-shadow:1px 1px 0px #aade7c;
-                                }
-                                .button:active {
-                                        position:relative;
-                                        top:1px;
-                                }
-                                .button:hover {
-                                        background-color: #85b1de;
-                                }
-                        </style>
-EndOfCSS;
+	private function formatAsHtml( $response, $is_main_request ) {
+		if( $is_main_request ) {
+			$view = "<!DOCTYPE html>\n";
+			$view .= "<html>\n";
+			$view .= "<head>\n";
+			$view .= '<link rel="stylesheet" href="http://apskel.com/resources/user/main.css" type="text/css" media="screen"/>' . "\n";
+			$view .= "</head>\n";
+			$view .= "</body>\n";
+		}
+		else { $view = ''; }
+		$view .= $this->wrapAssociativeValues( $response, "\t", "<ul>\n", "<li>", ": ", "</li>\n", "</ul>\n" );
+		if( $is_main_request ) {
+			$view .= "</body>\n</html>";
+		}
+		return $view;
+	}
+	
+	private function formatAsXml( $response, $is_main_request ) {
+		if( $is_main_request ) { $doctype = '<' . '?xml version="1.0"?' . '>'; }
+		else { $doctype = ''; }
+		$xml_object = new SimpleXMLElement("{$doctype}<response></response>");
+		$this->convertArrayToXmlObject( $response, $xml_object );
+		return $xml_object->asXml(); 
+	}
+
+	private function formatAsView( $response, $module_name, $view_name, $is_main_request ) {
+		$request_is_fatal = false;
+		$views_file_name = $this->getViewsFileName( $module_name );
+		if( file_exists( $views_file_name ) ) {
+			require_once( $views_file_name );
+			$views_class_name = $this->getViewsClassName( $module_name );
+			if( !class_exists( $views_class_name ) ) {
+				$request_is_fatal = true;
+				$request_is_fatal_reason = "The \"$module_name\" module's views class is not defined in its code file (~/application_{$this->identity->version}/modules/$views_file_name). ";
+			}
+			else {
+				// Does the view exist?
+				$views = new $views_class_name( $this );
+				$view_method_name = $this->getViewMethodName( $view_name ); 
+				if( !method_exists( $views, $view_method_name ) ) {
+					$request_is_fatal = true;
+					$request_is_fatal_reason = "The \"$module_name\" module's \"$view_method_name\" view method is not defined in the code ($views_file_name). ";
+				}
+			}
+		}
+		else {
+			// Views file doesn't exist
+			$request_is_fatal = true;
+			$request_is_fatal_reason = "The \"$module_name\" module's views file ($views_file_name). ";
+		}
+
+		// Finally return the formatted view..
+		if( $request_is_fatal ) {
+			return "Error: $request_is_fatal_reason\n";  // TODO: do something more elegant here (considering expected doc type)
+		}
+		else {
+			return $views->$view_method_name( $response ); 
+		}
+	}
+
+	private function formatAsTemplate( $response, $module_name, $template_name, $is_main_request ) {
+		// TODO: move templating thing from views superclass to framework.. and use that.
+	}
+
+	public function wrapAssociativeValues( $response, $increment, $waybefore, $justbefore, $between, $justafter, $wayafter ) {
+		$view = $waybefore;
+		foreach( $response as $field => $value ) {
+			if( is_array( $value ) ) { 
+				$view .= $this->wrapAssociativeValues( $value, $increment . $increment, $waybefore, $justbefore, $between, $justafter, $wayafter );
+			}
+			else {
+				$view .= $justbefore . $field . $between . $value . $justafter; 
+			}
+		}
+		return $view . $wayafter;
+	}
+
+	private function convertArrayToXmlObject($array, &$xml_object) {
+		foreach($array as $key => $value) {
+			if(is_array($value)) {
+				if(!is_numeric($key)){
+					$subnode = $xml_object->addChild("$key");
+					$this->convertArrayToXmlObject($value, $subnode);
+				}
+				else{
+					$this->convertArrayToXmlObject($value, $xml_object);
+				}
+			}
+			else {
+				$xml_object->addChild("$key","$value");
+			}
+		}
+	}
+
+	private function getRequestHelp( $request, $details ) {
+		return array( 'request' => $request, 'request_description' => $details['description'], 'parameters' => $details['parameters'] );
 	}
 	
 	// Converts displayable name to variable-name convention
@@ -773,54 +868,55 @@ EndOfSQL;
 		return 0;
 	}
 	
-	// Does the specified controller exist?
-	public function isController( $param_controller = null) {
-		if( $param_controller == null ) { $controller = $this->getControllerName; }
-		else                            { $controller = $param_controller; }
-		return file_exists( $this->getControllerFileName( $controller ) );
+	// Does the specified module exist?
+	public function isModule( $param_module = null) {
+		if( $param_module == null ) { $module = $this->getModuleName; }
+		else                        { $module = $param_module; }
+		// TODO: First see if registered (I think) 
+		return file_exists( $this->getControllerFileName( $module ) );
 	}
 	
-	// Does the specified request of the specified controller exist?
-	public function isRequest($param_controller, $param_request) {
-		if(!$this->isController($param_controller)) {
+	// Does the specified request of the specified module exist?
+	public function isRequest($param_module, $param_request) {
+		if(!$this->isModule($param_module)) {
 			return false;
 		}
-		$registration = $this->getControllerRequests( $param_controller );
+		$registration = $this->getModuleRequests( $param_module );
 		if( !isset( $registration['requests'][$param_request] ) ) { return false; }
 		else                                                      { return true; }
 	}
 
-	// Get list (numeric array) of controllers
-	public function getListOfControllers( $param_version = null ) {
+	// Get list (numeric array) of modules 
+	public function getListOfModules( $param_version = null ) {
 		if( $param_version == null ) { $version = $this->identity->version; }
 		else                         { $version = $param_version; }
-		// TODO: return array of controller names under version directory..
+		// TODO: return array of module names under version directory..
 	}
 
-	// Get registration for controller
-	public function getControllerRequests( $param_controller = null ) {
-		if( $param_controller == null ) { $controller = $this->getControllerName(); }
-		else                            { $controller = $param_controller; }
+	// Get registration for module 
+	public function getModuleRequests( $param_module = null ) {
+		if( $param_module == null ) { $module = $this->getModuleName(); }
+		else                        { $module = $param_module; }
 
 		// If not loaded from file then load first..
-		if( !isset( $this->registration[$controller] ) || !is_array( $this->registration[$controller] ) ) { $this->loadControllerRegistration( $param_controller ); }
-		return $this->registration[$controller]['requests'];
+		if( !isset( $this->registration[$module] ) || !is_array( $this->registration[$module] ) ) { $this->loadModuleRegistration( $param_module ); }
+		return $this->registration[$module]['requests'];
 	}
 
-	public function getControllerTables( $param_controller = null ) {
-		if( $param_controller == null ) { $controller = $this->getControllerName(); }
-		else                            { $controller = $param_controller; }
+	public function getModuleTables( $param_module = null ) {
+		if( $param_module == null ) { $module = $this->getModuleName(); }
+		else                        { $module = $param_module; }
 
 		// If not loaded from file then load first..
-		if( !isset( $this->registration[$controller] ) || !is_array( $this->registration[$controller] ) ) { $this->loadControllerRegistration( $param_controller ); }
-		return $this->registration[$controller]['tables'];
+		if( !isset( $this->registration[$module] ) || !is_array( $this->registration[$module] ) ) { $this->loadModuleRegistration( $param_module ); }
+		return $this->registration[$module]['tables'];
 	}
 
-	private function loadControllerRegistration( $param_controller ) {
-		$this->registration[ $param_controller ] = array();
-		$registration_file_name = $this->getControllerRegistrationFileName( $param_controller );
+	private function loadModuleRegistration( $param_module ) {
+		$this->registration[ $param_module ] = array();
+		$registration_file_name = $this->getModuleRegistrationFileName( $param_module );
 		if( !file_exists( $registration_file_name ) ) { 
-			print "Internal Error: Controller $param_controller's file $registration_file_name does not appear to exist.<br/>\n";
+			print "Internal Error: Module {$param_module}'s file {$registration_file_name} does not appear to exist.<br/>\n";
 			return null; 
 		}
 		include( $registration_file_name ); // TODO: deal with any warning emitted.. 
@@ -829,11 +925,11 @@ EndOfSQL;
 			exit("ERROR: \"$registration_file_name\" did not properly assign \$requests!");
 		}
 		else {
-			$this->registration[$param_controller]['requests'] = $requests;
+			$this->registration[$param_module]['requests'] = $requests;
 			if( isset( $tables ) ) {
-				$this->registration[$param_controller]['tables'] = $tables;
+				$this->registration[$param_module]['tables'] = $tables;
 			}
-			else { $this->reigstration[$param_controller]['tables'] = array(); }
+			else { $this->reigstration[$param_module]['tables'] = array(); }
 		}
 	}
 	
@@ -844,45 +940,45 @@ EndOfSQL;
 	}
 	
 	// Get requested resource (css, javascript, image, etc)
-	public function getResourceFile( $file_name, $controller ) {
-		// Order of presidence: Environment should overrides application which overrrides controller.. (except for css, it's a concatenation order)
+	public function getResourceFile( $file_name, $module ) {
+		// Order of presidence: Environment should overrides application which overrrides module.. (except for css, it's a concatenation order)
 		$resource_type             = strtolower( substr( strrchr( $file_name, '.' ), 1 ) );
-		$controller_resource_path  = $controller . '/resources/' . $file_name;
+		$module_resource_path      = $module . '/resources/' . $file_name;
 		$environment_resource_path = "../resources-{$this->identity->environment}/" . $file_name;
 		$application_resource_path = '../resources/' . $file_name;
 
 		//print "CWD: " . getcwd() . "<br/>\n";
-		//print "Controller: [$controller_resource_path]<br/>\n";
+		//print "Module: [$module_resource_path]<br/>\n";
 		//print "Environment: [$environment_resource_path]<br/>\n";
 		//print "Application: [$application_resource_path]<br/>\n";
 
 		// To concatenate or supersede?
 		if( $resource_type == 'css' ) {
 			header('Content-Type: text/css; charset=UTF-8');
-			// Concatenate controller + application + environment
+			// Concatenate module + application + environment
 			$found = false;
 			$resource_content = "/* NOTE: Gathering Resource: {$file_name} *" . "/\n\n";
-			if( file_exists( $controller_resource_path ) ) { 
+			if( file_exists( $module_resource_path ) ) { 
 				$found = true;
-				$resource_content .= "/* NOTE -- Found \"$file_name\" at controller level (\"$controller_resource_path\") *" . "/\n" . file_get_contents( $controller_resource_path ) . "\n\n";; 
+				$resource_content .= "/* NOTE -- Found \"$file_name\" at module level (\"$module_resource_path\") *" . "/\n" . file_get_contents( $module_resource_path ) . "\n\n";; 
 			}
-			else { $resource_content .= "/* Resource \"$file_name\" does not exist at the controller level ($controller_resource_path). *" . "/\n"; }
+			else { $resource_content .= "/* Resource \"$file_name\" does not exist at the module level ($module_resource_path). *" . "/\n"; }
 			if( file_exists( $application_resource_path ) ) {
 				$found = true;
-				$resource_content .= "/* NOTE -- Found \"$file_name\" in the main global application area (\"$application_resource_path\"; this overrides the controller level) *" . "/\n" . file_get_contents( $application_resource_path ) . "\n\n";; 
+				$resource_content .= "/* NOTE -- Found \"$file_name\" in the main global application area (\"$application_resource_path\"; this overrides the module level) *" . "/\n" . file_get_contents( $application_resource_path ) . "\n\n";; 
 			}
 			else { $resource_content .= "/* Resource \"$file_name\" does not exist as in the main global application area ($application_resource_path). *" . "/\n"; }
 			if( file_exists( $environment_resource_path ) ) {
 				$found = true;
-				$resource_content .= "/* NOTE -- Found \"$file_name\" in the {$this->identity->environment} environment's global application area (\"$environment_resource_path\"; this overrides the controller and main global application areas) *" . "/\n" . file_get_contents( $environment_resource_path ) . "\n\n";; 
+				$resource_content .= "/* NOTE -- Found \"$file_name\" in the {$this->identity->environment} environment's global application area (\"$environment_resource_path\"; this overrides the module and main global application areas) *" . "/\n" . file_get_contents( $environment_resource_path ) . "\n\n";; 
 			}
 			else { $resource_content .= "/* Resource \"$file_name\" does not exist as in the {$this->identity->environment} environment's global application area ($environment_resource_path). *" . "/\n"; }
 			if( $found !== true ) { $resource_content = ''; }
 		}
 		else {
-			// Supersede controller with application with environment
+			// Supersede module with application with environment
 			$active_resource_path = null;
-			if( file_exists( $controller_resource_path ) )  { $active_resource_path = $controller_resource_path; }
+			if( file_exists( $module_resource_path ) )  { $active_resource_path = $module_resource_path; }
 			if( file_exists( $application_resource_path ) ) { $active_resource_path = $application_resource_path; }
 			if( file_exists( $environment_resource_path ) ) { $active_resource_path = $environment_resource_path; }
 			if( $active_resource_path !== null ) {
