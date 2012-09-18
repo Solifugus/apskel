@@ -334,17 +334,17 @@ class Framework {
 		else { $is_main_request = false; }
 
 		// Default to the current web request, else explicitly specified request (can be a subrequest)
-		if( $module_name === null )     { $module_name   = $this->module_name; }
-		if( $request_name    === null ) { $request_name  = $this->request_name; }
-		if( $parameters      === null ) { $parameters    = $_REQUEST; }
+		if( $module_name   === null ) { $module_name   = $this->module_name; }
+		if( $request_name  === null ) { $request_name  = $this->request_name; }
+		if( $parameters    === null ) { $parameters    = $_REQUEST; }
 
 		//print "DEBUG:\nModule: $module_name; Request: $request_name; Parameters:"; var_dump($parameters); exit; 
 
 		// The 'resources' module is built-in to the framework for getting resource files (css, javascript, images, etc)
 		if( $module_name == 'resources' ) {
-			$module_name = strtolower( $request_name );
-			$file_name = trim( strtolower( substr( $this->identity->request_path, strlen( "resource/$module_name/" ) ) ), '/' );
-			return $this->getResourceFile( $file_name, $module_name ); 
+			$request_name = strtolower( $request_name );
+			$file_name = trim( strtolower( substr( $this->identity->request_path, strlen( "resources/{$request_name}" ) ) ), '/' );
+			return $this->getResourceFile( $file_name, $request_name );
 		}
 
 		// Begin with the presumption that the request is good
@@ -443,10 +443,14 @@ class Framework {
 		else {
 			// If a Good Request, Return the Following..
 			list( $response, $format ) = $controller->$request_method_name( $sanitized_parameters, $missing_parameters ); 
+			$response = $controller->$request_method_name( $sanitized_parameters, $missing_parameters ); 
 
-			// IF the response wasn't an array then presume it is an HTML string 
+			// If the response wasn't an array then presume it is an HTML string (for backward compatibility)
 			if( !is_array( $response ) ) {
 				$format = array( 'format' => 'direct-html' );
+			}
+			else {
+				list( $response, $format ) = $response;
 			}
 		}
 
@@ -489,7 +493,7 @@ class Framework {
 				return $this->formatAsTemplate( $response, $module_name, $format['template_file'], $is_main_request );
 				break;
 			case 'direct-html':
-				return wrapAsHtml( $response );
+				return $this->wrapAsHtml( $response );
 				break;
 			default:
 				$this->logMessage( "A unrecognized response format was specified.", WARNING );
@@ -1037,14 +1041,83 @@ EndOfSQL;
 		$environment_resource_path = "../resources/{$this->identity->environment}/" . $file_name;
 		$application_resource_path = '../resources/' . $file_name;
 
+		//print "File Name: [$file_name]<br/>\n";
 		//print "CWD: " . getcwd() . "<br/>\n";
 		//print "Module: [$module_resource_path]<br/>\n";
 		//print "Environment: [$environment_resource_path]<br/>\n";
 		//print "Application: [$application_resource_path]<br/>\n";
 
+		// Set headers for resource mime types (by file extension)
+		switch( $resource_type ) {
+			// Images 
+			case 'jpg':
+			case 'jpe':
+			case 'jpeg':
+				header('Content-Type: image/jpeg;');
+				break;
+
+			case 'gif':
+				header('Content-Type: image/gif;');
+				break;
+
+			case 'tif':
+			case 'tiff':
+				header('Content-Type: image/tiff;');
+				break;
+
+			case 'bmp':
+				header('Content-Type: image/bmp;');
+				break;
+
+			case 'svg':
+				header('Content-Type: image/svg+xml; charset=UTF-8');
+				break;
+
+			// Audio
+			case 'mp3':
+				header('Content-Type: audio/mpeg;');
+				break;
+
+			case 'wav':
+				header('Content-Type: audio/x-wav;');
+				break;
+
+			// Video
+			case 'mpeg':
+			case 'mpg':
+			case 'mp2':
+			case 'mpa':
+			case 'mpe':
+			case 'mpv2':
+				header('Content-Type: video/mpeg;');
+				break;
+
+			case 'mov':
+			case 'qt':
+				header('Content-Type: video/quicktime;');
+				break;
+
+			case 'avi':
+				header('Content-Type: vidoe/x-msvideo;');
+				break;
+
+			// Text
+			case 'css':
+				header('Content-Type: text/css; charset=UTF-8');
+				break;
+
+			case 'js':
+				header('Content-Type: text/javascript; charset=UTF-8');
+				break;
+
+			case 'xml':
+			default:
+				header('Content-Type: text/plain; charset=UTF-8');
+				break;
+		}
+
 		// To concatenate or supersede?
 		if( $resource_type == 'css' ) {
-			header('Content-Type: text/css; charset=UTF-8');
 			// Concatenate module + application + environment
 			$found = false;
 			$resource_content = "/* NOTE: Gathering Resource: {$file_name} *" . "/\n\n";

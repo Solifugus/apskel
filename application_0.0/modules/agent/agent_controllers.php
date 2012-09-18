@@ -97,7 +97,8 @@ class AgentControllers extends Controllers
 		// TODO
 
 		// Compose and Output the View;
-		return $this->views->composeConverse( $param );
+		//return $this->views->composeConverse( $param );
+		return "{ 'response': [ 'agent_statement': 'Hi right back to you', 'options': 'none for now' ] }";
 	} // end of processConverse controller
 
 	// Controller for the Create_topic Request
