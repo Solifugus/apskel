@@ -63,4 +63,19 @@ git push -u origin master
 
 
 TODO:
-  - in framework, convert "controller" references to "module"
+  - Add module index standard method--unknown or missing module methods
+    are directed to this standard catch-all method (with unknown or missing
+    method name passed to it, also)
+  - If returned view begins with <? or <?php then insert variables immediately
+    thereafter and eval, instead of echo'ing.  This will enable PHP view 
+    templates.. 
+  - Change all database calls to the Models class, whereby it merely gets and
+    maintains (to share) its database connection from Framework.
+  - Build environment migration tool to ensure the integrity of migrations
+    through pre-established paths: e.g. 
+               prod 1.0 -> dev 1.1 -> stage 1.1 -> prod 1.1 
+    ensuring no mistakes in the process.  This means, adding a place to define
+    allowed migration paths.  This also invites adding test-suites between
+    migrations
+
+

@@ -7,10 +7,9 @@
 class Views
 {
   protected $templates;               // view templates (associative array loaded from *.view.* files)
-  protected $return_format;           // 'html', 'xml', 'text', or custom..
   
-  public function setReturnFormat($param_format) { $this->param_format = $format; }
-  public function getReturnFormat()              { return $this->param_format; }
+  public function __construct() {
+  }
 
   // Extract Controller's Views From Files Into Associative Array
   public function loadViewTemplates($param_view_directory)

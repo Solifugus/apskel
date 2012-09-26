@@ -1,0 +1,26 @@
+<link rel="stylesheet" href="../resources/agent/main.css" type="text/css" media="screen"/>	
+<script type="text/javascript" src="../resources/agent/jquery-1.8.1.min.js"></script>
+<script type="text/javascript" src="../resources/agent/interface.js"></script>
+<div id="agent_editor_wrapper" class="view_wrapper">
+	<span id="editor_title" class="major_title">Reasoning Editor: {{title}}</span>
+	<hr/>
+	<span id="recognizer_label" class="minor_title">Recognizer</span><br/>
+	<span id="recognizer" class="read_only_text">{recognizer}</span><br/>
+	<div id="reactions" class="">
+		<div id="new_reaction" class="reaction">
+			<hr/>
+			<div id="new_reaction_left" class="reaction_left">
+				<input type="button" id="new_reaction_up" class="button" value="Up"/> 
+				<input type="button" id="new_reaction_up" class="button" value="Down"/> 
+			</div>
+			<div id="new_reaction_right" class="reaction_right">
+				<span id="" class="">Conditions</span><br/>
+				<textarea id="new_conditions" class="conditions_textarea"></textarea><br/> 
+				<span id="" class="">Actions</span><br/>
+				<textarea id="new_actions" class="actions_textarea"></textarea><br/>
+			</div>
+		</div>
+	</div>
+	<input type="button"  id="new_button" class="button" value="New Reaction"/> <input type="button" id="restore_button" class="button" value="Restore"/> <input type="button" id="save" class="button" value="Save All"/><br/>
+</div>
+

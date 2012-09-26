@@ -11,6 +11,7 @@ class AgentViews extends Views
 {
 	// Constructor
 	public function __construct( $param_framework ) {
+		parent::__construct();
 		$this->framework = $param_framework;
 		$this->loadViewTemplates(dirname(__FILE__));
 	} // end of __construct method

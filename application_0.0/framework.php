@@ -298,7 +298,11 @@ class Framework {
 				$request       = $_SESSION['request'];
 				$current_param = 1; // revert to all uriParameters after the first (module) as being request parameters
 			}
-			
+
+			// Parse and apply and "GET" variables into $_REQUEST (don't know why it isn't automagically)
+			parse_str( $this->identity->request_query, $get_parameters );
+			foreach( $get_parameters as $get_parameter => $get_value ) { $_REQUEST[$get_parameter] = $get_value; }
+
 			// Collect request parameters and override web request ($_REQUEST) parameters with them..
 			while ($current_param < count($uri_parameters)) {
 				# for each request parameter, take anything after first '=' as its value else assign null to it
@@ -442,7 +446,6 @@ class Framework {
 		}
 		else {
 			// If a Good Request, Return the Following..
-			list( $response, $format ) = $controller->$request_method_name( $sanitized_parameters, $missing_parameters ); 
 			$response = $controller->$request_method_name( $sanitized_parameters, $missing_parameters ); 
 
 			// If the response wasn't an array then presume it is an HTML string (for backward compatibility)
@@ -574,7 +577,7 @@ class Framework {
 
 	private function formatAsTemplate( $response, $module_name, $template_name, $is_main_request ) {
 		// TODO: deal with formatting as main- or sub-request based on $template_name extension for how to wrap 
-		$template = $this->getTemplate( $module_name, $template_name );
+		$template = $this->getViewTemplate( $module_name, $template_name );
 		$searches = array();
 		$replacements = array();
 		foreach( $response as $field => $value ) {
@@ -613,10 +616,10 @@ class Framework {
 	}
 
 	// Get template file name (select in order of priority from first to last: environment, application, module)
-	private function getTemplate( $module_name, $template_name ) {
-		$environment_template_path = "../templates/{$this->identity->environment}/" . $template_name;
-		$application_template_path = '../templates/' . $template_name;
-		$module_template_path      = $module_name . '/templates/' . $template_name;
+	private function getViewTemplate( $module_name, $template_name ) {
+		$environment_template_path = "../views/{$this->identity->environment}/" . $template_name;
+		$application_template_path = '../views/' . $template_name;
+		$module_template_path      = $module_name . '/views/' . $template_name;
 		if( file_exists( $environment_template_path ) ) {
 			return file_get_contents( $environment_template_path );
 		}
@@ -626,6 +629,8 @@ class Framework {
 		elseif( file_exists( $module_template_path ) ) {
 			return file_get_contents( $module_template_path );
 		}
+		// TODO: log and do something nicer when template is missing..
+		return "Problem: $module_name's \"$template_name\" file is missing.  ";
 	}
 
 	// Extract Controller's Views From Files Into Associative Array
@@ -796,11 +801,11 @@ class Framework {
 	}
 	
 	# Insert prefix to the beginning of each line in the text
-	public function prefixString($argPrefix, $argTimes, $argText) {
+	public function prefixLines($text, $times = 1, $prefix = "\t" ) {
 		$reply = '';
-		$lines = explode("\n", $argText);
+		$lines = explode("\n", $text);
 		foreach ($lines as $line) {
-			$reply .= str_repeat($argPrefix, $argTimes) . trim($line) . "\n";
+			$reply .= str_repeat($prefix, $times) . trim($line) . "\n";
 		}
 		return $reply;
 	}
@@ -848,6 +853,15 @@ class Framework {
 			return null;
 		}
 		return $rows;
+	}
+
+	// Quote string for insertion into database (based on type)
+	public function quoteForDatabase( $param ) {
+		return $this->database_connection->quote( $param );  // using PDO's quote method
+	}
+
+	public function getLastInsertId( $id ) {
+		return $this->database_connection->lastInsertId( $id );
 	}
 	
 

@@ -72,6 +72,11 @@ class Identity {
 		$this->request_address  = preg_replace('/^.*?:\/\/([^\/]+).*$/',"$1",$this->request_url);
 		$this->request_path     = trim(preg_replace('/^.*?:\/\/[^\/]+([^\?]+).*$/',"$1",$this->request_url),'/ ');
 		$this->request_query    = preg_replace('/^[^\?]+\?(.*)$/',"$1",$this->request_url);
+
+		//print "Protocol: {$this->request_protocol}<br/>\n";
+		//print "Address: {$this->request_address}<br/>\n";
+		//print "Path: {$this->request_path}<br/>\n";
+		//print "Query: {$this->request_query}<br/>\n";
 	}
 
 	// *** Get Application Level Settings

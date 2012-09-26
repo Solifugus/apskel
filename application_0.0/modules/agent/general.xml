@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<agent name="anyone">
+	<meaning recognizer="Do stuff with [this]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I can say [this]."
+				remember "I can remember [this]."
+				recall "I can remember [this]."
+				forget "I can forget [this]."
+				
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I don't understand." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Well, that makes two of us."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I don't think [something]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "What does it suggest to not think [something]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Why don't you [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Why should I [something]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Why can't you [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Only what stands between me and [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I don't want to." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Well, tisk.. tisk.."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I don't feel [something]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Feeling [something] isn't necessarilly required of you."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Do you think [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I am not sure that I do or don't think [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Do you feel [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I don't think a computer can technically 'feel' anything, much less [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Do you want [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Wanting [something] means little to me, how about you?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Why can't I [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Consider what it would take to [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Why do you [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Does it bother you that I [something]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Where are [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Why should it matter where they are?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="How are you?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "What do you think?  I am a machine, after all."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="What are [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Knowing what [something] are is of what consequence to you?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Why does [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Well because, of course."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="How does [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I am not sure. What do you think?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="[something] wasn't [something else]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				forget "[something] was [something else]."
+				remember "[something] was not [something else]"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="You want [something]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Why do you think I want [something]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="When are [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "When ever.."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Where is [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "How should I know?!"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Because [reason]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I suppose you really believe that."
+				interpret as "[reason]"
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "What makes you think [reason]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Can you [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Only trying can determine if one can [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="You can [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I shall exercise my right to [something] as I see fit."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I can't [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "How do you know you can't [something]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Can you [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "It's really only my business whether or not I can [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I think [something]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "What does thinking [something] suggest to you more broadly?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I don't [something]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Maybe you should [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Are you [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "It's really only my business if I [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="[something] isn't [something else]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I'll take your word for it."
+				forget "[something] is [something else]."
+				remember "[something] is not [something else]"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Why not [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "What is to gain from [something]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="When is [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "You tell me."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="What is [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Why do you want to know?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="You are [something]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I will acknowledge your opinion that I am [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Who are [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Perhaps those who deserve their privacy."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Are you [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I may or may not be [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Why do [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Why do you suppose?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I want [something]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Why do you want [something]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="How do [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "How do you know they do?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Who is [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Why do you want to know?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I feel [something]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I hope you are satisfied to feel [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Can I [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "What prevents you from [something]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I can [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "But do you really need to [something]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I can [something]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Perhaps you can [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="[something] was [something else]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				forget "[something] was not [something else]."
+				remember "[something] was [something else]"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Can I [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "The only way to know if you can [something] is to try."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="[something] is [something else]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I'll take that as a fact.."
+				forget "[something] is not [something else]."
+				remember "[something] is [something else]"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Am I [something]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Well, you are somewhere between being or not being [something]."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="I am [something]." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "So what if I accept that you are [something]?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Hello" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Hello back.."
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Greetings.."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="yes" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "What are you saying yes to?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Hi" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				interpret as "Hello"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="no" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "What are you saying no to?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="What is the meaning of: [whatever]" paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Please elaborate on that."
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "I'd appreciate if you rephrased that."
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				say "Sorry but I am not understanding you."
+			]]>
+		</reaction>
+	</meaning>
+</agent>
+

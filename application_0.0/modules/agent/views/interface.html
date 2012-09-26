@@ -1,17 +1,17 @@
 <link rel="stylesheet" href="../resources/agent/main.css" type="text/css" media="screen"/>	
 <script type="text/javascript" src="../resources/agent/jquery-1.8.1.min.js"></script>
 <script type="text/javascript" src="../resources/agent/interface.js"></script>
-<div id="agent_interface_view_wrapper" class="view_wrapper">
-	<span id="title">{{title}}</span><br/><hr/>
+<div id="agent_interface_wrapper" class="view_wrapper">
+	<span id="title" class="major_title">Conversation: {{title}}</span>
+	<hr/>
 	<div id="message_area" class="message_area">
 		<span id="messages" class="messages">{{messages}}</span><br/>
 		<span id="warnings" class="warnings">{{warnings}}</span><br/>
 	</div>
 	<br/>
-	<div id="transcript_area">
-	{{transcript}}
-	<div>
+	<div id="transcript_area">{{transcript}}<div>
 	
 	<input id="user_statement" class="input" value=""/><br/>
 	<div id="full_response" class="hidden_data"/>
 </div>
+

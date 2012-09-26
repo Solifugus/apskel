@@ -1,3 +1,52 @@
 
 .hidden_data { display: hidden; }
 
+#recognizer { 
+	display: block;
+	width: 100%;
+	height: 20px;
+	font-size: 12px;
+	text-align: center;
+	color: #FFF;
+	background-color: #000;
+}
+
+#reactions {
+	width: 100%;
+	height: 60%;
+	overflow-y: scroll;
+}
+
+.reaction {
+	background-color: #CCC !important;  /* BORKEN */
+}
+
+.reaction_left {
+	float: left;
+	margin: 10px;
+	width: 100px;
+	text-align: center;
+}
+
+.reaction_right {
+	float: left;
+	margin: 10px;
+	width: 450px;
+}
+
+.conditions_textarea {
+	width: 100%;
+	height: 40px;
+}
+
+.actions_textarea {
+	width: 100%;
+	height: 80px;
+}
+
+.script_textarea {
+	width: 100%;
+	height: 400px;
+	text-align: left;
+}
+

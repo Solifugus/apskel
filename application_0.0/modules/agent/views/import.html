@@ -1,0 +1,18 @@
+<link rel="stylesheet" href="../resources/agent/main.css" type="text/css" media="screen"/>	
+<script type="text/javascript" src="../resources/agent/jquery-1.8.1.min.js"></script>
+<div id="agent_edit_raw_wrapper" class="view_wrapper">
+	<span id="download_title" class="major_title">{{title}}</span>
+	<hr/>
+	<div id="message_area" class="message_area">
+		<span id="messages" class="messages">{{messages}}</span><br/>
+		<span id="warnings" class="warnings">{{warnings}}</span><br/>
+	</div>
+	<br/>
+	<form method="post" action="import">
+		<div id="code_area">
+			<textarea id="script" name="script" class="script_textarea">{{script}}</textarea>
+		<div>
+		<input id="" type="reset" class="button" value="RESET"/> <input id="" type="submit" class="button" value="IMPORT"/><br/>
+	</div>
+</div>
+

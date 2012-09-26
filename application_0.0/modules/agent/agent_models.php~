@@ -16,26 +16,26 @@ class AgentModels extends Models {
 		parent::__construct();
 		$this->framework = $param_framework;
 		// Register Conditional Functions
-		$this->conditionals = array();
-		$this->conditionals[] = array(
+		$conditionals = array();
+		$conditionals[] = array(
 			'php_function'     => 'isQuantity',
 			'regex_pattern'    => '/^\s*is\s*(>|<)?\s*[0-9]+\s*"([^"])"\s*$/',
 			'display_pattern'  => '(IS {|>|<}n "..")',
 			'description'      => 'True if n, greater than n, or less than n (respective to (nothing), >, or < being used) number of “..” matches are found in memory.',
 		);
-		$this->conditionals[] = array(
+		$conditionals[] = array(
 			'php_function'     => 'isAll',
 			'regex_pattern'    => '',
 			'display_pattern'  => '(ISALL ".." {=|>|<} "..")',
 			'description'      => 'True if, for all of the first “..” matches, a match from the second “..” exists with like-named variables values greater than, less than, or equal (respective to <, >, or = being used).',
 		);
-		$this->conditionals[] = array(
+		$conditionals[] = array(
 			'php_function'     => 'isAny',
 			'regex_pattern'    => '',
 			'display_pattern'  => '(ISANY ".." {=|>|<} "..")',
 			'description'      => 'True if, for any of the first “..” matches, a match from the second “..” exists with like-named variables values greater than, less than, or equal (respective to <, >, or = being used).',
 		);
-		$this->conditionals[] = array(
+		$conditionals[] = array(
 			'php_function'     => 'isCan',
 			'regex_pattern'    => '',
 			'display_pattern'  => '(can "..")',
@@ -43,14 +43,14 @@ class AgentModels extends Models {
 		);
 
 		// Register Actuational Functions
-		$this->actuationals[] = array(
+		$actuationals[] = array(
 			'php_function'     => 'actionSay',
 			'regex_pattern'    => '/^\s*say\s*"([^"]*)"\s*$/i',
 			'display_pattern'  => 'SAY ".."',
 			'description'      => 'Outputs a textual message to the user.',
 		);
 
-		$this->actuationals[] = array(
+		$actuationals[] = array(
 			'php_function'     => 'actionRemember',
 			//'regex_pattern'    => '/^\s*remember\s*"([^"]*)"\s*$/i',
 			'regex_pattern'    => '/^\s*remember\s*"([^"]*)"\s*((for|until)\s*"([^"]*)"\s*)?$/i',
@@ -58,50 +58,50 @@ class AgentModels extends Models {
 			'description'      => 'Outputs a textual statement to long term memory.  Optionally, the number of minutes "FOR" may be specified or a date/time "UNTIL".',
 		);
 
-		$this->actuationals[] = array(
+		$actuationals[] = array(
 			'php_function'     => 'actionRecall',
 			//'regex_pattern'    => '/^\s*recall\s*"([^"])"\s*$/',
-			'regex_pattern'    => '/^\s*recall\s*"([^"])"\s*(and|or)?\s*$/',  // TODO: BORKEN 
+			'regex_pattern'    => '/^\s*recall\s*"([^"])"\s*(and|or)?\s*$/',
 			'display_pattern'  => 'RECALL ".." [{AND|OR}]',
 			'description'      => 'Inputs any variables in the string from long term memory.  Multiple finds will be assigned as comma delimited values.  If "AND" or "OR" are appended then the last value (if more than one match) will be prefixed with it.',
 		);
 
-		$this->actuationals[] = array(
+		$actuationals[] = array(
 			'php_function'     => 'actionForget',
 			'regex_pattern'    => '/^\s*forget\s*"([^"]*)"\s*(after "([^"])"\s*)?$/i',
 			'display_pattern'  => 'FORGET ".." [AFTER ".."]',
 			'description'      => 'Removes all matching long term memories, variable names are ignored as variables are only used as wildcards.  If an "AFTER" value is given, it is used to scheduled to be forgotten after the given date/time or minutes to pass.',
 		);
 
-		$this->actuationals[] = array(
+		$actuationals[] = array(
 			'php_function'     => 'actionExpectAs',
 			'regex_pattern'    => '/^\s*expect\s*"([^"]*)"\s*as\s*"([^"]*)"\s*$/i',
 			'display_pattern'  => 'EXPECT ".." AS ".."',
 			'description'      => 'Schedules that, if the next user statement is as specified, to interpret that as the other specified statement.  The first statement is an input (assigns to any variables) and the second statement is an output (writes out contents of any variables).',
 		);
 
-		$this->actuationals[] = array(
+		$actuationals[] = array(
 			'php_function'     => 'actionInterpretAs',
 			'regex_pattern'    => '/^\s*interpret\s*as\s*"([^"]*)"\s*$/i',
 			'display_pattern'  => 'INTERPRET AS ".."',
 			'description'      => 'Performs as if the user also just entered the given statement.  This does not exclude any actions under the current reaction.  All outputs to the user are concatenated, in order.',
 		);
 
-		$this->actuationals[] = array(
+		$actuationals[] = array(
 			'php_function'     => 'actinWhatIf',
 			'regex_pattern'    => '/^\s*what\s*if\s*"([^"])"\s*$/',
 			'display_pattern'  => 'WHAT IF ".."',
 			'description'      => 'Notes the response statement and long term memories that would result if the given user statement were entered under the current status.',
 		);
 
-		$this->actuationals[] = array(
+		$actuationals[] = array(
 			'php_function'     => 'actionHowCould',
 			'regex_pattern'    => '/^\s*how\s*could\s*"([^"])"\s*else\s*"([^"])"\s*$/',
 			'display_pattern'  => 'HOW COULD ".." ELSE ".."',
 			'description'      => 'Solves for and notes what sequence of interactions (if any) would lead from the current status to the specified response statement.  If not solvable then interpret as the else statement.',
 		);
 
-		$this->actuationals[] = array(
+		$actuationals[] = array(
 			'php_function'     => 'actionWorkToward',
 			'regex_pattern'    => '/^\s*work\s*toward\s*"([^"])"\s*else\s*"([^"])"\s*$/',
 			'display_pattern'  => 'WORK TOWARD ".." ELSE ".."',
@@ -194,7 +194,7 @@ class AgentModels extends Models {
 	}
 
 	// Adds a new meaning, as identified by recognizer
-	public function addMeaning( $recognizer ) {
+	function addMeaning( $recognizer ) {
 		// TODO: ensure a duplicate doesn't already exist..
 		$length = getLengthOfRecognizer( $recognizer );
 		$sql = "INSERT INTO agent_meanings ( recognizer, length ) VALUES( '{$recognizer}', {$length} )";
@@ -202,25 +202,25 @@ class AgentModels extends Models {
 	}
 
 	// Adds a new reaction under the given meaning_id
-	public function addReaction( $meaning_id, $conditions, $actions, $is_functional = 'U' ) {
+	function addReaction( $meaning_id, $conditions, $actions, $is_functional = 'U' ) {
 		$sql = "INSERT INTO agent_reactions ( meaning_id, conditions, actions, functional ) VALUES ( {$meaning_id}, '{$conditions}', '{$actions}', '{$is_functional}' )";
 		$this->framework->runSql( $sql );
 	}
 
 	// Replaces (overwrites) the specified reaction
-	public function replaceReaction( $reaction_id, $conditions, $actions, $is_functional = 'U' ) {
+	function replaceReaction( $reaction_id, $conditions, $actions, $is_functional = 'U' ) {
 		$sql = "UPDATE agent_reactions SET meaning_id, conditions = '{$conditions}', actions = '{$actions}', functional = '{$is_functional}' WHERE reaction_id = {$reaction_id}' )";
 		$this->framework->runSql( $sql );
 	}
 
-	public function remember( $memory, $expiration ) {
+	function remember( $memory, $expiration ) {
 	}
 
-	public function forget( $memory ) {
+	function forget( $memory ) {
 	}
 
 	// Returns meaning_id of closest matching recognizer or null for none
-	public function findClosestMeaning( $statement ) {
+	function findClosestMeaning( $statement ) {
 		$statement_length = strlen( $statement );
 		$sql = "SELECT id AS id, recognizer FROM agent_meanings WHERE length <= {$statement_length} ORDER BY length desc";
 		$meanings = $this->framework->runSql( $sql );
@@ -293,24 +293,26 @@ class AgentModels extends Models {
 		//print nl2br( $notes );  -- DEBUG
 
 		// Matched or not, return the result..
-		if( $matched ) { return array( 'meaning_id' => $meaning_id, 'wildcards' => $wildcards ); }
+		if( $matched ) { return $meaning_id; }
 		else { return null; }
 	}
 
 	// Returns array of reactions under meaning, as best refinable using SQL
-	public function getAppropriateReaction( $meaning ) {
-		extract( $meaning );  // gives $meaning_id and $wildcards
+	function getAppropriateReaction( $meaning_id ) {
+		$response_text = '';     // Textual response to user
+		$response_actions = '';  // Response commands to user client (such as to schedule actions on the client timer)
 		$sql = "
 			SELECT agent_reactions.id AS next_id, conditions, actions, last_used
 			FROM agent_reactions LEFT JOIN agent_reactions_used ON agent_reactions.id = agent_reactions_used.reaction_id 
 			WHERE agent_reactions.meaning_id = {$meaning_id} and functional <> 'F' 
 			ORDER BY isnull(last_used) desc, last_used, priority;
 		";
+		$response_text = $sql; // XXX
 		$reactions = $this->framework->runSql( $sql );
 		$actions = '';
 		$reaction_id = null;
 		foreach( $reactions as $reaction ) {
-			if( $this->areConditionsTrue( $reaction['conditions'], $wildcards ) ) {
+			if( $this->areConditionsTrue( $reaction['conditions'] ) ) {
 				# Mark this reaction as having been used recently as to reduce its preferability for a little while.. 
 				if( $reaction['last_used'] == null ) {
 					// if reaction never before used then append a last_used record (as now)..
@@ -332,21 +334,20 @@ class AgentModels extends Models {
 		if( $reaction_id === null ) {
 			// No valid reactions exist
 			// TODO: at least log this..
-			return array( 'verbal' => 'DEBUG: no valid reaction (blank this out)', 'nonverbal' => '' ); 
+			return array( 'nothing', 'nothing either' );
 		}
 
 		// Execute actions from the selected reaction
-		$response = $this->executeActions( $actions, $wildcards );
-		if( $response === null ) {
-			// Error in actions, so mark as non-functional
-			$response = array( 'verbal' => 'DEBUG: error in actions (blank this out)', 'nonverbal' => '' );
-			// TODO: WORKING..
-		}
-		// return array( $response_text, $response_actions );
-		return $response;  // associative array: 'verbal' => '..', 'nonverbal' => '..'
+		// TODO: mechanism to execute actions
+		return array( $response_text, $response_actions );
 	}
 
-	private function getLengthOfRecognizer( $recognizer ) {
+	private function areConditionsTrue( $conditions ) {
+		// TODO: implement..
+		return true;
+	}
+
+	function getLengthOfRecognizer( $recognizer ) {
 		$recognizer = preg_replace('/\[[^\]]*\]/','*',$recognizer); 
 		return strlen( $recognizer );
 	}
@@ -374,106 +375,6 @@ class AgentModels extends Models {
 		}
  
 		return array( $matched, $wildcards );
-	}
-
-	// Evaluate a reaction's conditions
-	private function areConditionsTrue( $conditions, $wildcards ) {
-		// empty should evaluate to true
-		$conditions = trim( $conditions );
-		if( $conditions == '' ) { return true; }
-
-		// Translate to PHP 
-		// TODO: WORKING.. 
-
-		// Ensure only allowed code is included: &&, ||, !, (, ), and the is* functions
-		// TODO: WORKING..
-
-		// Evaluate and return the result 
-		eval( "\$result = {$conditions};\n" );
-		return $result;
-	}
-
-	private function isQuantity( $param ) {
-	}
-
-	private function isAll( $param ) {
-	}
-
-	private function isAny( $param ) {
-	}
-
-	private function isCan( $param ) {
-	}
-
-	private function executeActions( $actions, $wildcards ) {
-		// WORKING..
-		$verbal = '';
-		$nonverbal = '';
-		$lines = explode( "\n", trim( $actions ) );
-		foreach( $lines as $line ) {
-			$line = trim( $line );
-			if( $line == '' ) { continue; }
-			$actuator_function = null;
-			foreach( $this->actuationals as $actuator ) {
-				if( preg_match( $actuator['regex_pattern'], $line, $parameters ) ) {
-					$actuator_function = $actuator['php_function'];
-					break;
-				}
-			}
-			if( $actuator_function === null ) {
-				// The action $line was not recognized, therefor this reaction is non-functional
-				print "DEBUG non-functional action: /$line/<br/>\n";  // XXX
-				return null;
-			}
-			list( $verbal_append, $nonverbal_append ) = $this->$actuator_function( $parameters, $wildcards );
-			$verbal    .= $verbal_append;
-			$nonverbal .= $nonverbal_append;
-		}
-
-		return array( 'verbal' => $verbal, 'nonverbal' => $nonverbal );
-	}
-
-	private function writeInWildcardValues( $text, $wildcards ) {
-		foreach( $wildcards as $wildcard => $value ) {
-			$text = str_replace( '[' . trim( $wildcard, "[]" ) . ']', $value, $text );
-		}
-		return $text;
-	}
-
-	private function actionSay( $params, $wildcards ) {
-		return array( $this->writeInWildcardValues( $params[1], $wildcards ), '' );
-	}
-
-	private function actionRemember( $params, $wildcards ) {
-		return array( print_r( $params, true ), '' );
-	}
-
-	private function actionRecall( $params, $wildcards ) {
-		return array( print_r( $params, true ), '' );
-	}
-
-	private function actionForget( $params, $wildcards ) {
-		return array( print_r( $params, true ), '' );
-	}
-
-	private function actionExpectAs( $params, $wildcards ) {
-		return array( print_r( $params, true ), '' );
-	}
-
-	private function actionInterpretAs( $params, $wildcards ) {
-		return array( print_r( $params, true ), '' );
-	}
-
-	private function actionWhatIf( $params, $wildcards ) {
-		return array( print_r( $params, true ), '' );
-	}
-
-	private function actionHowCould( $params, $wildcards ) {
-		return array( print_r( $params, true ), '' );
-	}
-
-	private function actionWorkToward( $params, $wildcards ) {
-		return array( print_r( $params, true ), '' );
-	}
+}
 
 } // end of AgentModels class

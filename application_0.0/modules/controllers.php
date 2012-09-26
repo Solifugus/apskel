@@ -10,6 +10,8 @@ class Controllers
   protected $views;                 // instance of the views class like-named with the controller class
 
   protected $framework;                // systems settings and basic functions
+	public function __construct() {
+	}
 
 	public function buildSelect( $tables, $fields, $where ) {
 		if( is_array( $fields ) ) {

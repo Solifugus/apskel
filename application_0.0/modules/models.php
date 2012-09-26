@@ -12,6 +12,8 @@ class Models {
 
 	protected $framework;    // reference to system parameters and basic functions
 
+	public function __construct() {
+	}
 
 	// Run a Query Returning any Results
 	public function runQuery($param_sql) {
@@ -47,7 +49,7 @@ class Models {
 	public function buildTables( $drop_and_rebuild = false ) {
 		$success  = true;  // initially presume success, but mark as failed if any part fails. 
 		$prefix = $this->framework->getDatabaseName() . '.' . $this->framework->getDatabasePrefix();
-		$tables = $this->framework->getControllerTables();
+		$tables = $this->framework->getModuleTables();
 		foreach( $tables as $table => $columns ) {
 			// Drop or else check existence of table..
 			if( $drop_and_rebuild === true ) {
@@ -195,7 +197,7 @@ class Models {
 		return $sql;
 	}
 
-	public function buildInsertSql( $tables, $fields, $where ) {
+	public function buildInsertSql( $tables, $fields, $where = '' ) {
 		if( is_array( $fields ) ) {
 			$fields_insertable = '';
 			$fields_selectable = '';
@@ -211,7 +213,8 @@ class Models {
 			return null;
 		}
 
-		$sql = "INSERT INTO $tables ( $fields_selectable ) VALUES ( $fields_insertable ) WHERE $where";
+		if( $where > '' ) { $where = "WHERE {$where}"; }
+		$sql = "INSERT INTO $tables ( $fields_selectable ) VALUES ( $fields_insertable ) $where";
 		return $sql;
 	}
 
@@ -249,5 +252,5 @@ class Models {
 		return $results;
 	}
 
-}
+} // End of Models class
 

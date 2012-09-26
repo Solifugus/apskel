@@ -25,6 +25,22 @@ body {
 	font-weight: bold; 
 }
 
+.major_title { 
+	display: block; 
+	width: 100%; 
+	font-size: 16px; 
+	text-align: center; 
+	font-weight: bold; 
+}
+
+.minor_title { 
+	display: block; 
+	width: 100%; 
+	font-size: 14px; 
+	text-align: center; 
+	font-weight: bold; 
+}
+
 .label { 
 	display: inline-block; 
 	width: 100px;  
