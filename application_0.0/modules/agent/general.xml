@@ -1,12 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <agent name="anyone">
+	<meaning recognizer="Turn the test condition on." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				remember "The test condition is on."
+				say "Ok.  The test condition is ON."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Turn the test condition off." paradigm="natural">
+		<reaction priority="0" functional="U" condition="true">
+			<![CDATA[
+				forget "The test condition is on."
+				say "Ok.  The test condition is OFF."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Is the test condition on?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="(is >0 &quot;The test condition is on.&quot;)">
+			<![CDATA[
+				say "Yes.  The test condition is ON."
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="(is 0 &quot;The test condition is on.&quot;)">
+			<![CDATA[
+				say "No.  The test condition is OFF."
+			]]>
+		</reaction>
+	</meaning>
 	<meaning recognizer="Do stuff with [this]." paradigm="natural">
 		<reaction priority="0" functional="U" condition="true">
 			<![CDATA[
+				say "I can think [this]."
 				say "I can say [this]."
-				remember "I can remember [this]."
-				recall "I can remember [this]."
-				forget "I can forget [this]."
+				remember "I thought [this]."
+				remember "I said [this]."
+				recall "I [verb] [this]."
+				forget "I thought [this]."
+				expect "yep" as "yes"
+				expect "nope" as "no"
 				
 			]]>
 		</reaction>

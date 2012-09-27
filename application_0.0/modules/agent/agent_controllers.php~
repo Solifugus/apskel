@@ -154,23 +154,22 @@ class AgentControllers extends Controllers
 		if( $fresh !== true ) { $param['warnings'] .= $missing; }
 
 		// Perform Converse logic
-		//echo nl2br( print_r( $param, true ) ); // TODO: RESOLVE BIG BUG: not getting parameters in
-		$meaning_id = $this->models->findClosestMeaning( 'Hello' );
-		if( $meaning_id == null ) {
+		$meaning = $this->models->findClosestMeaning( $statement );
+		if( $meaning == null ) {
 			// NOTE: The Standard Meaning of an Unrecognized Statement 
 			// TODO: Perhaps, attempt to identify a sub-string of it and ask the user if that's what he/she means..
 			//       Or, keep a running tab of these and which the users says he/she means more than x% of the time
 			//       as to auto-assume thereafter..  If not correct, the user will restate..
-			$meaning_id = $this->models->findClosestMeaning( "What is the meaning of: $statement" );
+			$meaning = $this->models->findClosestMeaning( "What is the meaning of: $statement" );
 		}
 
-		list( $response_text, $response_actions ) = $this->models->getAppropriateReaction( $meaning_id );
+		$response = $this->models->getAppropriateReaction( $meaning );
 
 		// Compose and Output the View;
 		//return $this->views->composeConverse( $param );
-		$response_actions = addslashes( $response_actions );
+		$response['nonverbal'] = addslashes( $response['nonverbal'] );
 		$xml_response = "<" . "?xml version=\"1.0\" encoding=\"UTF-8\"?" . ">\n";
-		$xml_response = "<response actions=\"{$response_actions}\">\n<![CDATA[\n{$response_text}\n]]>\n</response>\n";
+		$xml_response = "<response actions=\"{$response['nonverbal']}\">\n<![CDATA[\n{$response['verbal']}\n]]>\n</response>\n";
 		return $xml_response;
 	} // end of processConverse controller
 
@@ -260,44 +259,6 @@ class AgentControllers extends Controllers
 		return $this->views->composePutReasoning( $param );
 	} // end of processPut_reasoning controller
 
-	private function isQuantity( $param ) {
-	}
-
-	private function isAll( $param ) {
-	}
-
-	private function isAny( $param ) {
-	}
-
-	private function isCan( $param ) {
-	}
-
-	private function actionSay( $param ) {
-	}
-
-	private function actionRemember( $param ) {
-	}
-
-	private function actionRecall( $param ) {
-	}
-
-	private function actionForget( $param ) {
-	}
-
-	private function actionExpectAs( $param ) {
-	}
-
-	private function actionInterpretAs( $param ) {
-	}
-
-	private function actionWhatIf( $param ) {
-	}
-
-	private function actionHowCould( $param ) {
-	}
-
-	private function actionWorkToward( $param ) {
-	}
 
 
 } // end of AgentControllers class

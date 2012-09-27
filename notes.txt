@@ -77,5 +77,11 @@ TODO:
     ensuring no mistakes in the process.  This means, adding a place to define
     allowed migration paths.  This also invites adding test-suites between
     migrations
+  - Build infrastructure to support contemplation.  Also, should an action 
+    sequence with an error partially execute or cancel all executions?
+  - Nonverbals returns may include commands for the client, but I should also
+    devise of a solid set of emotional cues to correspond with what internal
+    conditions, perhaps per action types executed: 
+      normal, thinking, puzzled, intent, expecting, successful (refine this) 
 
 

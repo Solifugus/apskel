@@ -18,26 +18,26 @@ class AgentModels extends Models {
 		// Register Conditional Functions
 		$this->conditionals = array();
 		$this->conditionals[] = array(
-			'php_function'     => '$this->isQuantity( \'${1}\', ${2}, "${3}", $wildcards )',
-			'regex_pattern'    => '/\(\s*is\s*([=><]?)\s*([0-9]+)\s*"([^"]*)"\s*\)/i',
+			'php_function'     => 'isQuantity',
+			'regex_pattern'    => '/^\s*is\s*(>|<)?\s*[0-9]+\s*"([^"])"\s*$/',
 			'display_pattern'  => '(IS {|>|<}n "..")',
 			'description'      => 'True if n, greater than n, or less than n (respective to (nothing), >, or < being used) number of “..” matches are found in memory.',
 		);
 		$this->conditionals[] = array(
-			'php_function'     => '$this->isAll( "${1}", \'${2}\', "${3}", $wildcards )',
-			'regex_pattern'    => '/\(\s*isall\s*"([^"]*)"\s*([=><])\s*"([^"]*)"\s*\)/i',
+			'php_function'     => 'isAll',
+			'regex_pattern'    => '',
 			'display_pattern'  => '(ISALL ".." {=|>|<} "..")',
 			'description'      => 'True if, for all of the first “..” matches, a match from the second “..” exists with like-named variables values greater than, less than, or equal (respective to <, >, or = being used).',
 		);
 		$this->conditionals[] = array(
-			'php_function'     => '$this->isAny( "${1}", \'${2}\', "${3}", $wildcards )',
-			'regex_pattern'    => '/\(\s*isany\s*"([^"]*)"\s*([=><])\s*"([^"]*)"\s*\)/i',
+			'php_function'     => 'isAny',
+			'regex_pattern'    => '',
 			'display_pattern'  => '(ISANY ".." {=|>|<} "..")',
 			'description'      => 'True if, for any of the first “..” matches, a match from the second “..” exists with like-named variables values greater than, less than, or equal (respective to <, >, or = being used).',
 		);
 		$this->conditionals[] = array(
-			'php_function'     => '$this->isCan( "${1}", $wildcards )',
-			'regex_pattern'    => '/\(\s*iscan\s*"([^"]*)"\s*\)/i',
+			'php_function'     => 'isCan',
+			'regex_pattern'    => '',
 			'display_pattern'  => '(can "..")',
 			'description'      => 'True if a path from the current status to the given agent response (“..”) can be plotted.',
 		);
@@ -219,31 +219,8 @@ class AgentModels extends Models {
 	public function forget( $memory ) {
 	}
 
-	public function reactTo( $statement ) {
-		$meaning = $this->findClosestMeaning( $statement );
-		if( $meaning == null ) {
-			// NOTE: The Standard Meaning of an Unrecognized Statement 
-			// TODO: Perhaps, attempt to identify a sub-string of it and ask the user if that's what he/she means..
-			//       Or, keep a running tab of these and which the users says he/she means more than x% of the time
-			//       as to auto-assume thereafter..  If not correct, the user will restate..
-			$meaning = $this->findClosestMeaning( "What is the meaning of: $statement" );
-		}
-		return $this->getAppropriateReaction( $meaning );
-	}
-	
 	// Returns meaning_id of closest matching recognizer or null for none
 	public function findClosestMeaning( $statement ) {
-		// Was statement a specially expected phrase (expect ".." as"..)?
-		if( isset( $_SESSION['agent'] ) && isset( $_SESSION['agent']['expecting'] ) ) {
-			foreach( $_SESSION['agent']['expecting'] as $from => $to ) {
-				$from = strtolower( trim( $from ) );
-				if( $statement == $from ) { $statement = $to;  }
-			}
-			// Cease all expectations (TODO: enhance "expect as" action to specify longer durations)
-			$_SESSION['agent']['expecting'] = array();
-		}
-
-		// Collect all possible matching meaning recognizers then start comparing for best match
 		$statement_length = strlen( $statement );
 		$sql = "SELECT id AS id, recognizer FROM agent_meanings WHERE length <= {$statement_length} ORDER BY length desc";
 		$meanings = $this->framework->runSql( $sql );
@@ -392,18 +369,11 @@ class AgentModels extends Models {
 			// collect statement parameters and form into associate array
 			$n = 0;
 			foreach($wildcard_names[0] as $wildcard_name) {
-				$wildcards[trim( $wildcard_name, '[]' )] = $variable_matches[++$n];
+				$wildcards[$wildcard_name] = $variable_matches[++$n];
 			}
 		}
  
 		return array( $matched, $wildcards );
-	}
-
-	private function writeInWildcardValues( $text, $wildcards ) {
-		foreach( $wildcards as $wildcard => $value ) {
-			$text = str_replace( '[' . trim( $wildcard, "[]" ) . ']', $value, $text );
-		}
-		return $text;
 	}
 
 	// Evaluate a reaction's conditions
@@ -413,87 +383,30 @@ class AgentModels extends Models {
 		if( $conditions == '' ) { return true; }
 
 		// Translate to PHP 
-		foreach( $this->conditionals as $condition ) {
-			$conditions = preg_replace( $condition['regex_pattern'], $condition['php_function'], $conditions );
-		}
-		$english_logic = array( '/([^"]*)and([^"]*)/i', '/([^"]*)or([^"]*)/i', '/([^"]*)not([^"]*)/i' );
-		$php_logic     = array( '${1}&&${2}', '${1}||${2}', '${1}!${2}' );
-		$conditions = preg_replace( $english_logic, $php_logic, $conditions );
+		// TODO: WORKING.. 
 
 		// Ensure only allowed code is included: &&, ||, !, (, ), and the is* functions
 		// TODO: WORKING..
 
 		// Evaluate and return the result 
-		$conditions = "\$result = {$conditions};\n";
-		eval( $conditions );
+		eval( "\$result = {$conditions};\n" );
 		return $result;
 	}
 
-	// (is {=|>|<}n "object")
-	private function isQuantity( $adjective, $number, $object, $wildcards ) {
-		$object = $this->writeInWildcardValues( $object, $wildcards );
-		$where = 'memory LIKE \'' . preg_replace( '/\[([^]]*)\]/','%', $object ) . '\'';
-		$counted = $this->getRecordCount( 'agent_memories', $where );
-		//print "isQuantity: adjective = \"$adjective\", number = \"$number\", object = \"$object\", counted = \"$counted\"\n"; 
-		switch( $adjective ) {
-			case '>': if( $counted > $number ) { $answer = true; } else { $answer = false; } break;
-			case '<': if( $counted < $number ) { $answer = true; } else { $answer = false; } break;
-			case '=':
-			case '':
-			default: if( $counted == $number ) { $answer = true; } else { $answer = false; } break;
-		}
-		//print "Answer: " . ( $answer ? "TRUE\n" : "FALSE\n" );
-		return $answer;
+	private function isQuantity( $param ) {
 	}
 
-	// (isall "subject" {=|>|<} "object")
-	private function isAll( $subject, $relation, $object, $wildcards ) {
-		$object = $this->writeInWildcardValues( $subject, $wildcards );
-		$object = $this->writeInWildcardValues( $object, $wildcards );
-
-		// Collect wildcard variable values from all matching subject memories
-		$where = 'memory LIKE \'' . preg_replace( '/\[([^]]*)\]/','%', $subject ) . '\'';
-		$sql = "SELECT memory FROM agent_memories WHERE $where";
-		$subject_records = $this->framework->runSql( $sql );
-		$subject_wildcards = array();
-		$next = -1;
-		foreach( $subject_records as $subject_record ) {
-			list( $matched, $subject_wildcards[++$next] ) = $this->compareStatementToRecognizer( $subject_record, $subject );
-		}
-
-		// Collect wildcard variable values from all matching object memories
-		$where = 'memory LIKE \'' . preg_replace( '/\[([^]]*)\]/','%', $object ) . '\'';
-		$sql = "SELECT memory FROM agent_memories WHERE $where";
-		$object_records = $this->framework->runSql( $sql );
-		$object_wildcards = array();
-		$next = -1;
-		foreach( $object_records as $object_record ) {
-			list( $matched, $object_wildcards[++$next] ) = $this->compareStatementToRecognizer( $object_record, $object );
-		}
-
-		// Do all values in subject_wildcards have the specified relation to a relative value in object_wildcards?
-		// TODO: for each $subject_wildcards iteration, is there an iteration of $object_wildcards with the specified relation to its value set?
-
-		print "isAll: subject = \"$subject\", relation = \"$relation\", object = \"$object\"\n"; 
-		return true;
+	private function isAll( $param ) {
 	}
 
-	// (isany "subject" {=|>|<} "object")
-	private function isAny( $subject, $relation, $object, $wildcards ) {
-		$object = $this->writeInWildcardValues( $subject, $wildcards );
-		$object = $this->writeInWildcardValues( $object, $wildcards );
-		print "isAny: subject = \"$subject\", relation = \"$relation\", object = \"$object\"\n"; 
-		return true;
+	private function isAny( $param ) {
 	}
 
-	// (isCan "object")
-	private function isCan( $object, $wildcards ) {
-		$object = $this->writeInWildcardValues( $object, $wildcards );
-		print "isCan: object = \"$object\"\n"; 
-		return true;
+	private function isCan( $param ) {
 	}
 
 	private function executeActions( $actions, $wildcards ) {
+		// WORKING..
 		$verbal = '';
 		$nonverbal = '';
 		$lines = explode( "\n", trim( $actions ) );
@@ -520,28 +433,36 @@ class AgentModels extends Models {
 		return array( 'verbal' => $verbal, 'nonverbal' => $nonverbal );
 	}
 
+	private function writeInWildcardValues( $text, $wildcards ) {
+		foreach( $wildcards as $wildcard => $value ) {
+			$text = str_replace( '[' . trim( $wildcard, "[]" ) . ']', $value, $text );
+		}
+		return $text;
+	}
+
 	private function actionSay( $params, $wildcards ) {
-		return array( $this->writeInWildcardValues( $params[1], $wildcards ) . ' ', '' );
+		return array( $this->writeInWildcardValues( $params[1], $wildcards ), '' );
 	}
 
 	private function actionRemember( $params, $wildcards ) {
 		// TODO: add date/time, if provided for expiration
 		$fields = array();
 		$fields['memory'] = trim( "'" . addslashes( $this->writeInWildcardValues( $params[1], $wildcards ) ) . "'" );
-		$this->updateElseInsert( 'agent_memories', $fields );
+		$sql = $this->buildInsertSql( 'agent_memories', $fields );
+		$this->framework->runSql( $sql );
 		return array( '', ";remembered" );
 	}
 
 	private function actionRecall( $params, &$wildcards ) {
 		// create search pattern by applying wildcards from user statement
-		$seeking = trim( addslashes( $this->writeInWildcardValues( $params[1], $wildcards ) ) );
+		$seeking = trim( "'" . addslashes( $this->writeInWildcardValues( $params[1], $wildcards ) ) . "'" );
 
 		// extract any other wildcards from memory
 		$sql_pattern = preg_replace( '/\[([^]]*)\]/','%', $seeking );
-		$sql = "SELECT memory FROM agent_memories WHERE memory LIKE '{$sql_pattern}'";
+		$sql = "SELECT memory FROM agent_memories WHERE memory LIKE {$sql_pattern}";
 		$matches = $this->framework->runSql( $sql );
 		foreach( $matches as $match ) {
-			list( $matched, $new_wildcards ) = $this->compareStatementToRecognizer( strtolower( $match['memory'] ), strtolower( $seeking ) );
+			list( $matched, $new_wildcards ) = $this->compareStatementToRecognizer( $match['memory'], $seeking );
 			if( !$matched ) {
 				// TODO: log this..
 				print "DEBUG: During recall, \"{$match['memory']}\" failed to match \"$seeking\" in PHP, although it did in SQL.<br/>\n";
@@ -558,44 +479,33 @@ class AgentModels extends Models {
 			}
 		}
 		
-		return array( '', ';recalled' );
+		return array( $sql . "\n" . print_r( $wildcards, true ), ';recalled' );
 	}
 
 	private function actionForget( $params, $wildcards ) {
 		$pattern =  preg_replace( '/\[([^]]*)\]/','%', $params[1] );
-		$sql = "DELETE FROM agent_memories WHERE memory LIKE '{$pattern}'"; 
+		$sql = "DELETE FROM agent_memories WHERE memory LIKE '{$pattern}'";
 		$this->framework->runSql( $sql );
 		return array( '', ';forgot' );
 	}
 
 	private function actionExpectAs( $params, $wildcards ) {
-		// TODO: put in a session stack: What if a subsequent interpret as (or other articulation) settles this within the same request?
-		if( !isset( $_SESSION['agent'] ) ) {  $_SESSION['agent'] = array(); }
-		if( !isset( $_SESSION['agent']['expecting'] ) ) {  $_SESSION['agent']['expecting'] = array(); }
-		$from = $this->writeInWildcardValues( trim( $params[1] ), $wildcards );
-		$to   = $this->writeInWildcardValues( trim( $params[2] ), $wildcards );
-		$_SESSION['agent']['expecting'][$from] = $to;
-		return array( '', ';expecting' );
+		return array( print_r( $params, true ), '' );
 	}
 
 	private function actionInterpretAs( $params, $wildcards ) {
-		$statement = $this->writeInWildcardValues( trim( $params[1] ), $wildcards );
-		$response = $this->reactTo( $statement );
-		return array( $response['verbal'], $response['nonverbal'] );
+		return array( print_r( $params, true ), '' );
 	}
 
 	private function actionWhatIf( $params, $wildcards ) {
-		print "TODO: actionWhatIf()\n";
 		return array( print_r( $params, true ), '' );
 	}
 
 	private function actionHowCould( $params, $wildcards ) {
-		print "TODO: actionHowCould()\n";
 		return array( print_r( $params, true ), '' );
 	}
 
 	private function actionWorkToward( $params, $wildcards ) {
-		print "TODO: actionWorkToward()\n";
 		return array( print_r( $params, true ), '' );
 	}
 

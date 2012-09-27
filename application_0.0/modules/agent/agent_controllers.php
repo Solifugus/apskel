@@ -154,16 +154,7 @@ class AgentControllers extends Controllers
 		if( $fresh !== true ) { $param['warnings'] .= $missing; }
 
 		// Perform Converse logic
-		$meaning = $this->models->findClosestMeaning( $statement );
-		if( $meaning == null ) {
-			// NOTE: The Standard Meaning of an Unrecognized Statement 
-			// TODO: Perhaps, attempt to identify a sub-string of it and ask the user if that's what he/she means..
-			//       Or, keep a running tab of these and which the users says he/she means more than x% of the time
-			//       as to auto-assume thereafter..  If not correct, the user will restate..
-			$meaning = $this->models->findClosestMeaning( "What is the meaning of: $statement" );
-		}
-
-		$response = $this->models->getAppropriateReaction( $meaning );
+		$response = $this->models->reactTo( $statement );
 
 		// Compose and Output the View;
 		//return $this->views->composeConverse( $param );

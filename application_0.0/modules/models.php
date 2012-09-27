@@ -21,8 +21,21 @@ class Models {
 		return $this->system->database_connection->exec($param_query);
 	}
 
-	// Get Record Count(s)
-	public function getRecordCount($param_model) {
+	// Get Record Count(s): $to_count (table) & $where--or else $to_count as a data model array
+	public function getRecordCount( $to_count, $where = '' ) {
+		if( is_array( $to_count ) ) {
+			// TODO: build count query according to $model array structure..
+			$sql = '';
+		}
+		else {
+			$sql = "SELECT COUNT(*) AS quantity FROM {$to_count} WHERE {$where}";
+		}
+		$result = $this->framework->runSql( $sql );
+		if( $result === null ) {
+			// TODO: log this..
+			return null;
+		}
+		return $result[0]['quantity'];
 	}
 
 	// Get Record(s)
@@ -222,7 +235,7 @@ class Models {
 	// @param $tables -- one or more tables plus any associations (e.g. "accounts a LEFT JOIN transactions t ON a.id = t.account_id")
 	// @param $fields -- associative array of field names and respective values (e.g. ('account_id' => 456, 'description' => 'Bag of Apples', 'sold_on' => '2012-04-30'))
 	// @param $where  -- the where clause to identify if the record/s already exist and/or to update it/them. 
-	public function updateElseInsert( $tables, $fields, $where ) {
+	public function updateElseInsert( $tables, $fields, $where = '' ) {
 		// Prepare variables..
 		$fields_selectable = '';
 		$fields_updateable = '';
@@ -232,22 +245,28 @@ class Models {
 			$fields_updateable .= "$field = $value, ";
 			$fields_insertable .= "$value, ";
 		}
+		$fields_selectable = trim( $fields_selectable, ', ');
 		$fields_updateable = trim( $fields_updateable, ', ');
-		$fields_insertable = trim( $fields_updateable, ', '); 
+		$fields_insertable = trim( $fields_insertable, ', '); 
+
+		// If no WHERE clause then build one..
+		if( $where == '' ) {
+			$where = str_replace( ',', ' AND', $fields_updateable );
+		}
 
 		// See if already there..
 		$sql = "SELECT $fields_selectable FROM $tables WHERE $where";
-		$results = $this->runSql( $sql );
+		$results = $this->framework->runSql( $sql );
 
 		// If is there, run an update..
 		if( count( $results ) > 0 ) {
 			$sql = "UPDATE $tables SET $fields_updateable WHERE $where";
-			$results = $this->runSql( $sql );
+			$results = $this->framework->runSql( $sql );
 		}
 		// If not there, run an insert..
 		else {
 			$sql = "INSERT INTO $tables ( $fields_selectable ) VALUES ( $fields_insertable )";
-			$results = $this->runSql( $sql );
+			$results = $this->framework->runSql( $sql );
 		}
 		return $results;
 	}
