@@ -51,18 +51,13 @@ The Request Handling Process
        (e) template={template name} -- uses module template
 
 
-==================
-git Hub
 
-How I started this for github:
-
-git add -A *
-git commit -m 'First Commit.'
-git remote add origin https://github.com/Solifugus/apskel.git
-git push -u origin master
-
-
+==============================================================================
 TODO:
+  - add {{=template.html}} template annotation to pull up and embed the
+    specified template file in the current one, prior to populating the
+    whole thing together.  This will help with things like shared headers
+    and footers.
   - Add module index standard method--unknown or missing module methods
     are directed to this standard catch-all method (with unknown or missing
     method name passed to it, also)
@@ -83,5 +78,35 @@ TODO:
     devise of a solid set of emotional cues to correspond with what internal
     conditions, perhaps per action types executed: 
       normal, thinking, puzzled, intent, expecting, successful (refine this) 
+  - build-in support data view-structures into the registration file and for
+    data field filters, so as to build auto-validation code
+    in the controllers.  This would provide model & form validation.
+  - build ability to submit jsonized or form data to a request handler and
+    directly into a model, validated and stored.  This should integrate
+    seamlessly with auto-generated view templates.
+  - Implement version control.  If an untested reaction breaks then mark as
+    false (non-functional) such that any previously working version of it
+    will revive.
+  - Build [xxx:wildcard] utilities using parameterized regular expression
+    translations to make this capable of internationalization: 
+    * [change person:wildcard] to change the person
+      e.g.: "my luck" to "your luck"
+    * [generalize:wildcard] to strip any preceeding "the", "a", or "an"
+      e.g.: "a car" to "car"
+    * [specify:wildcard] to convert any "a" or "an" prefixes to "the"
+      e.g.: "an apple" to "the apple" but not "the bike" to "the the bike"
+    * [instantiate:wildcard] to add a "the" prefix (if not already there)
+      e.g.: "horse" or "a horse" to "the horse"
+  - build the semi-passive observer interface..
+  - build the post-conversation editor..
 
+==================
+git Hub
+
+How I started this for github:
+
+git add -A *
+git commit -m 'First Commit.'
+git remote add origin https://github.com/Solifugus/apskel.git
+git push -u origin master
 

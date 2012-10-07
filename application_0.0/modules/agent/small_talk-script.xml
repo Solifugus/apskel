@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- PreK Script: a conversation script for beginning learning reading and writing.
+
+Paradigm May Be Any Of:
+  natural
+  cyclic
+  random
+
+Conditions May Include:
+  (is =n &quot;..&quot;)
+  (is >n &quot;..&quot;)
+  (is <n &quot;..&quot;)
+
+  (isany &quot;..&quot; = &quot;..&quot;)
+  (isany &quot;..&quot; > &quot;..&quot;)
+  (isany &quot;..&quot; < &quot;..&quot;)
+
+  (isall &quot;..&quot; = &quot;..&quot;)
+  (isall &quot;..&quot; > &quot;..&quot;)
+  (isall &quot;..&quot; < &quot;..&quot;)
+
+Actions are:
+  remember ".."
+  say ".."
+  interpret as ".."
+  expect ".." as ".."
+  recall ".."
+  forget ".."
+  
+-->
+<agent topic="small_talk">
+	<meaning recognizer="Introduce yourself." paradigm="natural">
+		<reaction priority="0" functional="U" condition="(is =0 &quot;agent introduced to user&quot;)">
+			<![CDATA[
+				remember "agent introduced to [user]"
+				say "Hi.  I am Mat."
+				interpret as "Teach me something."
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="(is >0 &quot;agent introduced to [user]&quot;)">
+			<![CDATA[
+				say "We already introduced.  I am Mat!"
+				interpret as "Teach me something."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Hello." paradigm="natural">
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				remember "[user] said hello."
+				say "Hi."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Hi." paradigm="natural">
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				interpret as "hello";
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Teach me something." paradigm="random">
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				say "Dad is sad.  How are you?"
+				interpret as "How is sam?"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="How is sam?" paradigm="cyclic">
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				say "Sam is good."
+				interpret as "Team me something?"
+			]]>
+		</reaction>
+	</meaning>
+</agent>
+

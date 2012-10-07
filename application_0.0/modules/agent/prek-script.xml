@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- PreK Script: a conversation script for beginning learning reading and writing.
+
+Paradigm May Be Any Of:
+  natural
+  cyclic
+  random
+
+Conditions May Include:
+  (is =n &quot;..&quot;)
+  (is >n &quot;..&quot;)
+  (is <n &quot;..&quot;)
+
+  (isany &quot;..&quot; = &quot;..&quot;)
+  (isany &quot;..&quot; > &quot;..&quot;)
+  (isany &quot;..&quot; < &quot;..&quot;)
+
+  (isall &quot;..&quot; = &quot;..&quot;)
+  (isall &quot;..&quot; > &quot;..&quot;)
+  (isall &quot;..&quot; < &quot;..&quot;)
+
+Actions are:
+  remember ".." 
+  say ".."
+  interpret as ".."
+  expect ".." as ".."
+  recall ".."
+  forget ".."
+
+Deficiencies:
+  - Need way to recognize numbers and do math.  How many times has something happened?  Is or isn't this a number?  What is this plus that? etc.
+  - Need way to retrieve just one of any number of matching memories.. e.g. recall any ".."
+  
+-->
+<agent topic="prek_math">
+	<meaning recognizer="Introduce yourself." paradigm="natural">
+		<reaction priority="0" functional="U" condition="(is =0 &quot;agent introduced to user&quot;)">
+			<![CDATA[
+				remember "agent introduced to [user]"
+				say "Hi.  I am Mat. I can teach you math."
+				interpret as "Teach me math."
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="(is >0 &quot;agent introduced to [user]&quot;)">
+			<![CDATA[
+				say "We already introduced.  I am Mat!"
+				interpret as "Teach me math."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Hello." paradigm="natural">
+		<reaction priority="0" functional="U" condition="(is =0 &quot;[user] said hello&quot;">
+			<![CDATA[
+				remember "[user] said hello."
+				say "Hi."
+				interpret as "Teach me math."
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="(is >0 &quot;[user] said hello&quot;">
+			<![CDATA[
+				say "You already said hello."
+				interpret as "Teach me math."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Hi." paradigm="natural">
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				interpret as "hello";
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="Teach me math." paradigm="random">
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				say "What is 1 + 1?"
+				remember "1 + 1 = 2"
+				expect "[answer]" as "1 + 1 is [answer]"
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				say "What is 2 + 2?"
+				remember "2 + 2 = 4"
+				expect "[answer]" as "2 + 2 is [answer]"
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				say "What is 3 + 3?"
+				remember "3 + 3 = 6"
+				expect "[answer]" as "3 + 3 is [answer]"
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				say "What is 4 + 4?"
+				remember "4 + 4 = 8"
+				expect "[answer]" as "4 + 4 is [answer]"
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				say "What is 5 + 5?"
+				remember "5 + 5 = 10"
+				expect "[answer]" as "5 + 5 is [answer]"
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="[a] + [b] = [answer]" paradigm="natural">
+		<reaction priority="0" functional="U" condition="(is >0 &quot;[a] + [b] = [answer]&quot;)">
+			<![CDATA[
+				say "Yes!"
+				remember "[user] correctly answered [a] + [b]"
+				interpret as "Teach me math."
+			]]>
+		</reaction>
+		<reaction priority="0" functional="U" condition="(is =0 &quot;[a] + [b] = [answer]&quot;)">
+			<![CDATA[
+				say "No.  [a] + [b] is not [answer]."
+				interpret as "What is [a] + [b]?"
+				remember "[user] incorrectly answered [a] + [b]"
+				interpret as "Teach me math."
+			]]>
+		</reaction>
+	</meaning>
+	<meaning recognizer="What is [a] + [b]?" paradigm="natural">
+		<reaction priority="0" functional="U" condition="">
+			<![CDATA[
+				recall "[a] + [b] = [answer]"	
+				say "[a] + [b] = [answer]."
+			]]>
+		</reaction>
+	</meaning>
+</agent>
+

@@ -1,0 +1,57 @@
+<link rel="stylesheet" href="../resources/agent/jquery-ui/css/ui-lightness/jquery-ui-1.8.24.custom.css" type="text/css" media="screen"/>        
+<script type="text/javascript" src="../resources/agent/jquery-ui/js/jquery-1.8.2.min.js"></script>
+<script type="text/javascript" src="../resources/agent/jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
+<link rel="stylesheet" href="../resources/agent/main.css" type="text/css" media="screen"/>
+<script type="text/javascript" src="../resources/agent/reactions.js"></script>
+<div id="agent_editor_wrapper" class="view_wrapper">
+	<span id="editor_title" class="major_title">Brain Editor</span>
+	<span id="editor_title" class="minor_title">-- Available Reactions To Meaning --</span><br/>
+	<span id="recognizer" class="">{{recognizer}}</span><br/>
+	Possible reactions are shown below, in order of priority.  The paradigm for this meaning is {{paradigm}}.
+	<hr/>
+	<div id="reaction_directory" class="">
+{{reactions:reaction.html}}
+	</div>
+	<hr>
+	<div id="reaction_buttons" class="button_bar">
+		<input type="button" id="new_reaction_button" class="button" value="New Reaction"/>
+	</div>
+	<hr/>
+{{=shared_footer.html}}
+</div>
+
+<!-- Dialog to add new meaning -->
+<div id="new_reaction_dialog" class="web_dialog">
+	<form id="new_reaction_form" method="post" action="save_reaction">
+		<input type="hidden" name="meaning_id" value="{{meaning_id}}"/>
+		<table class="reaction_definition">
+			<tr>
+				<td>
+					<label for="priority">Priority:</label> <input type="text" id="priority" class="input modifiable" value="0">
+				</td>
+				<td>
+				</td>
+				<td align="right">
+					<label for="functional">Functional:</label> 
+					<select id="functional" name="functional" class="modifiable">
+						<option>Untested</option>
+						<option>False</option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="3">
+					<label for="conditions_edit">Conditions:</label><br/> 
+					<textarea id="conditions_edit" name="conditions" class="reaction_conditions modifiable"></textarea>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="3">
+					<label for="actions_edit">Reactions:</label><br/> 
+					<textarea id="actions_edit" name="actions" class="reaction_actions modifiable"></textarea>
+				</td>
+			</tr>
+		</table>
+	</form>
+</div>
+

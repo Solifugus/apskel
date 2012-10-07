@@ -445,7 +445,7 @@ class Framework {
 			$this->logMessage( "Failed to process request: {$request_is_fatal_reason}.", NOTICE );
 		}
 		else {
-			// If a Good Request, Return the Following..
+			// *** If a Good Request, Return the Following.. ***
 			$response = $controller->$request_method_name( $sanitized_parameters, $missing_parameters ); 
 
 			// If the response wasn't an array then presume it is an HTML string (for backward compatibility)
@@ -480,6 +480,9 @@ class Framework {
 		}
 
 		switch( strtolower( trim ( $format['format'] ) ) ) {
+			case 'preformatted':
+				return $this->formatAsPreformatted( $response, $format['mime_type'], $is_main_request );
+				break;
 			case 'text':
 				return $this->formatAsText( $response, $is_main_request );
 				break;
@@ -488,6 +491,9 @@ class Framework {
 				break;
 			case 'xml':
 				return $this->formatAsXml( $response, $is_main_request );
+				break;
+			case 'json':
+				return $this->formatAsJson( $response, $is_main_request );
 				break;
 			case 'view':
 				return $this->formatAsView( $response, $module_name, $format['view_file'], $is_main_request );
@@ -510,13 +516,20 @@ class Framework {
 		return "<!DOCTYPE=html>\n<html>\n<body>\n$html</body>\n</html>\n";
 	}
 
+	private function formatAsPreformatted( $response, $mime_type, $is_main_request ) {
+		if( $is_main_request ) { header("Content-Type: {$mime_type};"); }
+		return $response;
+	}
+
 	private function formatAsText( $response, $is_main_request ) {
+		if( $is_main_request ) { header('Content-Type: text/plain;'); }
 		$view = $this->wrapAssociativeValues( $response, "\t", '', '- ', ': ', "\n", '' );
 		return $view;
 	}
 
 	private function formatAsHtml( $response, $is_main_request ) {
 		if( $is_main_request ) {
+			header('Content-Type: text/html;');
 			$view = "<!DOCTYPE html>\n";
 			$view .= "<html>\n";
 			$view .= "<head>\n";
@@ -533,14 +546,28 @@ class Framework {
 	}
 	
 	private function formatAsXml( $response, $is_main_request ) {
-		if( $is_main_request ) { $doctype = '<' . '?xml version="1.0"?' . '>'; }
+		if( $is_main_request ) {
+			header('Content-Type: application/xml;');
+			$doctype = '<' . '?xml version="1.0" encoding="UTF-8"?' . '>';
+		}
 		else { $doctype = ''; }
-		$xml_object = new SimpleXMLElement("{$doctype}<response></response>");
-		$this->convertArrayToXmlObject( $response, $xml_object );
-		return $xml_object->asXml(); 
+		if( is_array( $response ) ) {
+			$xml_object = new SimpleXMLElement("{$doctype}<response></response>");
+			$this->convertArrayToXmlObject( $response, $xml_object );
+			return $xml_object->asXml(); 
+		}
+		else { return "$doctype\n$response"; }
+	}
+
+	private function formatAsJson( $response, $is_main_request ) {
+		if( $is_main_request ) { header('Content-Type: application/json;'); }
+		else { $doctype = ''; }
+		if( is_array( $response ) ) { return json_encode( $response ); }
+		else { return $response; }
 	}
 
 	private function formatAsView( $response, $module_name, $view_name, $is_main_request ) {
+		// TODO: set appropriate mime-type, such as: header('Content-Type: text/html;');
 		$request_is_fatal = false;
 		$views_file_name = $this->getViewsFileName( $module_name );
 		if( file_exists( $views_file_name ) ) {
@@ -576,26 +603,26 @@ class Framework {
 	}
 
 	private function formatAsTemplate( $response, $module_name, $template_name, $is_main_request ) {
-		// TODO: deal with formatting as main- or sub-request based on $template_name extension for how to wrap 
+		// TODO: deal with formatting as main- or sub-request based on $template_name extension for how to wrap
+		//       and set mime-type accordingly..
+
+		// Retrieve the template file and insert any missing segments from other view files: via {{=file_segment_to_insert.html}}
 		$template = $this->getViewTemplate( $module_name, $template_name );
-		$searches = array();
-		$replacements = array();
-		foreach( $response as $field => $value ) {
-			if( is_array( $value ) ) {
-				// TODO: make $field specify subsection to repeat once for each sub-array element; template subsections looke like {{section_name:begin}} .. {{section_name:end}}
-				$value = '';
+		preg_match_all('/{{([^}]+)}}/', $template, $references);  // TODO: some day make this recursive..
+		foreach( $references[1] as $reference ) {
+			if( substr( trim( $reference ), 0, 1 ) == '=' ) {
+				$segment_name = substr( $reference, 1 );
+				$segment = $this->getViewTemplate( $module_name, $segment_name );
+				$template = str_replace( '{{' . $reference . '}}', $segment, $template );
 			}
-			if( is_bool( $value ) ) {
-				if( $value ) { $value = 'True'; }
-				else { $value = 'False'; }
-			}
-			if( is_null( $value ) ) {
-				$value = 'Null';
-			}
-			$searches[]     = '{{' . $field . '}}';
-			$replacements[] = $value;
 		}
-		$view = preg_replace( '/{{.*}}/', '', str_replace( $searches, $replacements, $template ) );
+
+		// Populate differently if response is associative (just fill in) verses numeric (replicate first) array
+		if( !$this->isAssociative( $response ) ) {
+			$view = '';
+			foreach( $response as $fields ) { $view .= $this->populateModuleTemplate( $module_name, $template, $fields ); }
+		}
+		else { $view = $this->populateModuleTemplate( $module_name, $template, $response ); }
 
 		// If this is a main request then wrap this view up before returning it..
 		if( $is_main_request ) {
@@ -613,6 +640,40 @@ class Framework {
 			} 
 		}
 		return $view;
+	}
+
+	public function populateModuleTemplate( $module_name, $template, $fields ) {
+		$sub_templates = array();  // mapping of {{label}} to file name from {{label:file_name}} patterns
+		preg_match_all('/{{([^}]+)}}/', $template, $references);
+		foreach( $references[1] as $reference ) {
+			if( strpos( $reference, ':' ) !== false ) {
+				list( $key, $file ) = explode( ':', $reference, 2 );
+				$sub_templates[$key] = $file;
+				$template = str_replace( '{{' . $reference . '}}', '{{' . $key . '}}', $template );
+			}
+		}
+		$searches = array();
+		$replacements = array();
+		foreach( $fields as $field => $value ) {
+			if( is_array( $value ) ) {
+				if( count( $value ) > 0 ) {
+					$template_file = $sub_templates[$field]; 
+					$value = $this->formatAsTemplate( $value, $module_name, $template_file, false ); 
+				}
+				else { $value = ''; } // sub-template but sub-tempalte data is empty..
+			}
+			if( is_bool( $value ) ) {
+				if( $value ) { $value = 'True'; }
+				else { $value = 'False'; }
+			}
+			if( is_null( $value ) ) {
+				$value = 'Null';
+			}
+			$searches[]     = '{{' . $field . '}}';
+			$replacements[] = $value;
+		}
+		//print "\n\nDEBUG FOR TEMPLATE POPULATION\n\nSEARCHES:\n" . print_r( $searches, true ) . "\nREPLACEMENTS:\n" . print_r( $replacements, true) . "\n\n";
+		return preg_replace( '/{{.*}}/', '', str_replace( $searches, $replacements, $template ) );
 	}
 
 	// Get template file name (select in order of priority from first to last: environment, application, module)
@@ -809,14 +870,28 @@ class Framework {
 		}
 		return $reply;
 	}
+
+	# Trim each line of a multi-lined string
+	public function trimLines( $text ) {
+		return implode( "\n", array_map( 'trim', explode( "\n", $text ) ) );
+	}
+
+	# Convert any multiple adjacent white-space to single space
+	public function oneifySpaces( $text, $exclude_within = '"' ) {
+		return preg_replace('/\s+/', ' ', $text );  // TODO: make not between $exclude_within characters (e.g. '"' or '{}')
+	}
+
+	# Tokenize string to words (retaining also the separation characters as tokens, too)
+	public function tokenize( $text, $separators = ' ~!@#$%^&*()_-+={}[]|\\:;"\'<>,.?/' ) {
+		// TODO:
+	}
 	
 	# Recursively Strip Slashes in an Array
 	public function stripAllSlashes($argData) {
 		return is_array($argData) ? array_map('stripAllSlashes', $argData) : stripslashes($argData);
 	}
 
-	// *** Run a Query and Return any Result
-	public function runSql( $param_sql, $param_user = null, $param_password = null ) {
+	private function ensureDatabaseAccessible() {
 		// Ensure we have a useable database connection
 		if(!$this->database_connection) {
 			$database_id = $this->getIdOfDatabaseFor('read_write'); // TODO: build mechanism to know when to use each database usage type..
@@ -831,6 +906,11 @@ class Framework {
 			//$this->database_connection = $this->openDatabase($this->getDatabaseAddress($database_id), $this->getDatabaseName($database_id), $this->getDatabaseUser($database_id), $this->getDatabasePassword($database_id));
 			$this->database_connection = $this->openDatabase( $address, $database, $user, $password );
 		}
+	}
+
+	// *** Run a Query and Return any Result
+	public function runSql( $param_sql, $param_user = null, $param_password = null ) {
+		$this->ensureDatabaseAccessible();
 
 		// Run the given SQL
 		try {
@@ -856,12 +936,24 @@ class Framework {
 	}
 
 	// Quote string for insertion into database (based on type)
-	public function quoteForDatabase( $param ) {
-		return $this->database_connection->quote( $param );  // using PDO's quote method
+	public function quoteForDatabase( $unquoted ) {
+		$this->ensureDatabaseAccessible();
+		try { $quoted = $this->database_connection->quote( $unquoted ); } // using PDO's quote method
+		catch( PDOException $errorObject ) {
+			// TODO: log error
+			print "Error trying to quote \"{$unquoted}\" for database: " . $errorObject->getMessage();
+			$quoted = $unquoted;  // TODO: what else can I do?
+		}
+		return $quoted;
 	}
 
 	public function getLastInsertId( $id ) {
-		return $this->database_connection->lastInsertId( $id );
+		$this->ensureDatabaseAccessible();
+		try { $id = $this->database_connection->lastInsertId( $id ); }
+		catch( PDOException $errorObject ) {
+			// TODO: log error
+			print "Error trying to get last insert ID for database: " . $errorObject->getMessage();
+		}
 	}
 	
 
@@ -1176,8 +1268,89 @@ EndOfSQL;
 		return $resource_content;
 	}
 
+	// Is an associative array?  (else numeric array)
+	public function isAssociative( $array ) {
+		return array_keys( $array ) !== range( 0, count( $array ) - 1 );
+	}
+
+	// Convert multi-lined string into a single line string
 	public function makeSingleLine( $text ) {
 		return preg_replace( "/(\r\n|\n|\r)/s", ' ', $text );
+	}
+
+	// Map key TO value: Returns the value for key matching $thing, or else $default if no matching key
+	public function mapToValue( $thing, $map, $default = '', $caseless = true ) {
+		$mapped = false;
+
+		// Attempt mapping against key..
+		foreach( $map as $key => $value ) {
+			if( $caseless ) {
+				if( strtolower( $thing ) == strtolower( $key ) ) {
+					$new_thing = $value;
+					$mapped = true;
+					break; 
+				}
+			}
+			else
+			{
+				if( $thing == $key ) {
+					$new_thing = $value;
+					$mapped = true;
+					break;
+				}
+			}
+
+			// Maybe it's already mapped..
+			if( strtolower( $thing ) == strtolower( $value ) ) { 
+				$new_thing = $value;
+				$mapped = true;
+				break;
+			}
+		}
+		if( !$mapped ) { $new_thing = $default; }
+		return $new_thing;
+	}
+	
+	// Map key FROM value: Returns the key for value matching $thing, or else $default if no matching value 
+	public function mapToKey( $thing, $map, $default = '', $caseless = true ) {
+		$mapped = false;
+
+		// Attempt mapping against value..
+		foreach( $map as $key => $value ) {
+			if( $caseless ) {
+				if( strtolower( $thing ) == strtolower( $value ) ) {
+					$new_thing = $key;
+					$mapped = true;
+					break; 
+				}
+			}
+			else
+			{
+				if( $thing == $value ) {
+					$new_thing = $key;
+					$mapped = true;
+					break;
+				}
+			}
+
+			// Maybe it's already mapped..
+			if( strtolower( $thing ) == strtolower( $key ) ) { 
+				$new_thing = $key;
+				$mapped = true;
+				break;
+			}
+		}
+		if( !$mapped ) { $new_thing = $default; }
+		return $new_thing;
+	}
+
+	// Strip out all except specified values from associative array
+	public function removeAllBut( $to_keep, $from_among ) {
+		$filtered = array();
+		foreach( $from_among as $key => $value ) {
+			if( in_array( $key, $to_keep ) ) { $filtered[$key] = $value; }
+		}
+		return $filtered;
 	}
 	
 

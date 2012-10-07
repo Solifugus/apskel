@@ -198,6 +198,13 @@ class Models {
 		if( is_array( $fields ) ) {
 			$fields_updateable = '';
 			foreach( $fields as $field => $value ) {
+				if( substr( trim( $value ), 0, 1) == "'" ) { 
+					$value = $this->framework->quoteForDatabase( trim( $value, "'" ) );
+					$value = str_replace( '\"', '"', $value );
+				}
+				elseif( !is_numeric( $value ) ) {
+					$this->framework->logMessage( 'The ->buildInsert() method in the ' . __FILE__ . " file was passed an unquoted string ({$value}) to insert.", WARNING );
+				}
 				$fields_updateable .= "$field = $value, ";
 			}
 			$fields_updateable = trim( $fields_updateable, ', ' );
@@ -215,6 +222,13 @@ class Models {
 			$fields_insertable = '';
 			$fields_selectable = '';
 			foreach( $fields as $field => $value ) {
+				if( substr( trim( $value ), 0, 1) == "'" ) { 
+					$value = $this->framework->quoteForDatabase( trim( $value, "'" ) );
+					$value = str_replace( '\"', '"', $value );
+				}
+				elseif( !is_numeric( $value ) ) {
+					$this->framework->logMessage( 'The ->buildInsert() method in the ' . __FILE__ . " file was passed an unquoted string ({$value}) to insert.", WARNING );
+				}
 				$fields_insertable .= "$value, ";
 				$fields_selectable .= "$field, ";
 			}
@@ -229,6 +243,13 @@ class Models {
 		if( $where > '' ) { $where = "WHERE {$where}"; }
 		$sql = "INSERT INTO $tables ( $fields_selectable ) VALUES ( $fields_insertable ) $where";
 		return $sql;
+	}
+
+	// Builds and runs insert SQL, returning id of inserted row
+	public function insertAndGetId( $id, $tables, $fields, $where = '' ) {
+		$sql = $this->buildInsertSql( $tables, $fields, $where );
+		$this->framework->runSql( $sql );
+		return $this->framework->getLastInsertId( $id );
 	}
 
 	// Checks if record/s already exist and updates given fields (if exists) or inserts a new record with given fields (if does not exist)

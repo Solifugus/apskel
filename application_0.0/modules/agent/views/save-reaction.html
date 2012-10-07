@@ -1,0 +1,32 @@
+		<form method="post" action="save_reaction">
+			<input type="hidden" name="meaning_id" value="{{meaning_id}}"/>
+			<table class="reaction_definition">
+				<tr>
+					<td>
+						<label for="priority_{{meaning_id}}_{{reaction_id}}">Priority:</label> <input type="text" id="priority_{{meaning_id}}_{{reaction_id}}" name="priority" class="input" value="{{priority}}">
+					</td>
+					<td>
+					</td>
+					<td align="right">
+						<label for="functional_{{meaning_id}}_{{reaction_id}}">Functional:</label> 
+						<select id="functional_{{meaning_id}}_{{reaction_id}}" name="functional">
+							<option>{{functional}}</option>
+							<option>False</option>
+							<option>Untested</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3"><textarea id="conditions_{{meaning_id}}_{{reactiond_id}}" name="conditions" class="reaction_conditions">{{conditions}}</textarea></td>
+				</tr>
+				<tr>
+					<td colspan="3"><textarea id="actions_{{meaning_id}}_{{reactiond_id}}" name="actions" class="reaction_actions">{{actions}}</textarea></td>
+				</tr>
+				<tr>
+					<td><input type="reset"  id="reset_{{meaning_id}}_{{reaction_id}}" value="Reset"/></td>
+					<td align="center"><span id="dirty_status" class="">(not modified)</td>
+					<td align="right"><input type="button" id="save_{{meaning_id}}_{{reaction_id}}"  value="Save"/></td>
+				</tr>
+			</table>
+		</form>
+

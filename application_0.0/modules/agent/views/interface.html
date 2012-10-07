@@ -1,17 +1,29 @@
-<link rel="stylesheet" href="../resources/agent/main.css" type="text/css" media="screen"/>	
-<script type="text/javascript" src="../resources/agent/jquery-1.8.1.min.js"></script>
+<link rel="stylesheet" href="../resources/agent/jquery-ui/css/ui-lightness/jquery-ui-1.8.24.custom.css" type="text/css" media="screen"/>        
+<script type="text/javascript" src="../resources/agent/jquery-ui/js/jquery-1.8.2.min.js"></script>
+<script type="text/javascript" src="../resources/agent/jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
+<link rel="stylesheet" href="../resources/agent/main.css" type="text/css" media="screen"/>
 <script type="text/javascript" src="../resources/agent/interface.js"></script>
+
+<!-- HTML Conversational Agent Interface -->
 <div id="agent_interface_wrapper" class="view_wrapper">
-	<span id="title" class="major_title">Conversation: {{title}}</span>
+	<span id="title" class="major_title">Conversation: {{topic}}</span>
 	<hr/>
 	<div id="message_area" class="message_area">
 		<span id="messages" class="messages">{{messages}}</span><br/>
 		<span id="warnings" class="warnings">{{warnings}}</span><br/>
 	</div>
 	<br/>
-	<div id="transcript_area">{{transcript}}<div>
+	<div id="transcript">{{transcript}}</div>
 	
 	<input id="user_statement" class="input" value=""/><br/>
-	<div id="full_response" class="hidden_data"/>
+	<hr/>
+	<div id="converse_footer" class="footer">
+		<a href="meanings" target="_blank">( Edit Brain )</a><br/>
+{{=shared_footer.html}}
+	</div>
+
+	<!-- Catches Agent Response Messages for Javascript to Process -->
+	<div id="agent_response" class="xidden_data">{{response}}</div>
+
 </div>
 
