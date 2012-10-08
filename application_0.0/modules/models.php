@@ -232,8 +232,8 @@ class Models {
 				$fields_insertable .= "$value, ";
 				$fields_selectable .= "$field, ";
 			}
-			$fields_insertable = trim( $fields_insertable, ', ' );
-			$fields_selectable = trim( $fields_selectable, ', ' );
+			$fields_insertable = ltrim( rtrim( $fields_insertable, ', ' ) );
+			$fields_selectable = ltrim( rtrim( $fields_selectable, ', ' ) );
 		}
 		else {
 			$this->framework->logMessage( 'The ->buildInsert() method in the ' . __FILE__ . ' file expected an associative array as its $fields parameter but an array was not provided.', CRITICAL );

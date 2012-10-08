@@ -954,6 +954,7 @@ class Framework {
 			// TODO: log error
 			print "Error trying to get last insert ID for database: " . $errorObject->getMessage();
 		}
+		return $id;
 	}
 	
 
@@ -1353,5 +1354,44 @@ EndOfSQL;
 		return $filtered;
 	}
 	
+	// Break sentence into words (separated by whitespace(s) and/or special characters (~`!@#$%^&*()_-+={}[]|\:;"'<,>.?/)
+	public function breakIntoWords( $sentence, $separators = '~`!@#$%^&*()_-+={}[]|\\:;"\'<,>.?/ ' ) {
+		// normalize whitespace (remove off ends and any multiple adjacent whitespaces within to one)
+		$sentence = trim( $sentence );
+		$sentence = preg_replace( '/\s+/', ' ', $sentence );
+
+		// Break into words..
+		$word = '';
+		$words = array();
+		for( $position = 0; $position <= strlen( $sentence ); $position++ ) {
+			$character = substr( $sentence, $position, 1 );
+			if( strpos( $separators, $character ) !== false ) {
+				if( $word != '' ) {
+					$words[] = $word;
+					$word = '';
+				}
+				$words[] = $character;
+				continue;
+			}
+			$word .= $character;
+		}
+		if( $word != '' ) { $words[] = $word; }
+		return $words;
+	}
+
+	// Usings keys and values of an associative array, converts certain words (keys) to other words (values) 
+	public function replaceWords( $mappings, $sentence, $case_sensitive = true ) {
+		$new_sentence = '';
+		$words = $this->breakIntoWords( $sentence );
+		foreach( $words as $word ) {
+			$new_word = $word;
+			foreach( $mappings as $from => $to ) {
+				if( $case_sensitive && $word == $from ) { $new_word = $to; }
+				if( !$case_sensitive && strtolower( $word ) == strtolower( $from ) ) { $new_word = $to; }
+			}
+			$new_sentence .= $new_word;
+		}
+	return $new_sentence;
+	}
 
 } // End of Framework Class

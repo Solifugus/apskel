@@ -99,6 +99,17 @@ TODO:
       e.g.: "horse" or "a horse" to "the horse"
   - build the semi-passive observer interface..
   - build the post-conversation editor..
+  - Rework logging mechanism: when logging, specify or'd types:
+    * Error                 -- something functionally broke
+    * Unexpected Occurance  -- data or process flow is not as it should be
+    * Awareness             -- not necessarily wrong, but high profile thing occured
+    * Tracking              -- note about process flow and data along the way
+    * System      -- problem pertains to system problems
+    * Program     -- problem pertains to programming
+    * Application -- problem pertains to application workings
+    * Security    -- problem pertains to potential security breach
+    * Critical -- main functionality failed
+    * Minor    -- inconvenience may have resulted to user
 
 ==================
 git Hub
@@ -109,4 +120,5 @@ git add -A *
 git commit -m 'First Commit.'
 git remote add origin https://github.com/Solifugus/apskel.git
 git push -u origin master
+
 

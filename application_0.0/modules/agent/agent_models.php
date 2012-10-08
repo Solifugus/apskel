@@ -21,6 +21,20 @@ class AgentModels extends Models {
 		// Register Paradigm Mappings (database uses 1 charachter while user should see whole word)
 		$this->paradigm_mappings   = array( 'natural'  => 'N', 'cyclic' => 'C', 'random' => 'R' );
 		$this->functional_mappings = array( 'untested' => 'U', 'false'  => 'F', 'true'   => 'T' );
+		$this->inversions          = array (
+			'I'     => 'you',
+			'you'   => 'me',
+			'me'    => 'you',
+			'my'    => 'your',  
+			'your'  => 'my',
+			'yours' => 'mine',
+			'mine'  => 'yours',
+			//'don\'t'  => 'do not',     // TODO: build in support for multiple word conversions
+			//'won\'t'  => 'will not',
+			//'can\'t'  => 'cannot',
+			//'can not'  => 'cannot',
+			//'isn\'t'  => 'is not',
+		);
 
 		// Register Conditional Functions
 		$this->conditionals = array();
@@ -156,13 +170,14 @@ class AgentModels extends Models {
 				$fields = array();
 				$fields['recognizer'] = "'{$meaning['recognizer']}'";
 				$fields['length']     = $effectiveLength;
-				if( isset( $meaning['paradigm'] ) ) { $fields['paradigm'] = $this->framework->mapToValue( $fields['paradigm'], $this->paradigm_mappings, 'N' ); }
+				if( isset( $meaning['paradigm'] ) ) { $fields['paradigm'] = $this->framework->mapToValue( $meaning['paradigm'], $this->paradigm_mappings, 'N' ); }
 				else { $fields['paradigm'] = "N"; }
 				$fields['paradigm'] =  "'{$fields['paradigm']}'";
 				$sql = $this->buildInsertSql( 'agent_meanings', $fields );
 				$affected = $this->framework->runSql($sql);
 				if($affected == 0) {
 					$warnings .=  "Meaning failed to insert: {$sql}<br/>\n"; 
+					print "$warnings";
 					// TODO: log this
 					continue; 
 				}
@@ -171,7 +186,7 @@ class AgentModels extends Models {
 				foreach($meaning->reaction as $reaction) {
 					//$sql = "INSERT INTO agent_reactions ( meaning_id, priority, conditions, actions, functional ) VALUES ($meaning_id," . $reaction['priority'] . ',' .  $this->framework->quoteForDatabase( $this->framework->trimLines( $reaction['condition'] ) ) . ',' . $this->framework->quoteForDatabase( $this->framework->trimLines( $reaction ) ) . ',' . $this->framework->quoteForDatabase( $reaction['functional'] ) . ' )';
 					$fields['meaning_id'] = $meaning_id;
-					$fields['priority']   = $reaction['priority'];
+					$fields['priority']   = ( isset( $reaction['priority'] ) && is_numeric( $reaction['priority'] ) ) ? $reaction['priority'] : 0;
 					$fields['conditions'] = "'" . $this->framework->trimLines( $reaction['condition'] ) . "'";
 					$fields['actions']    = "'" . trim( $this->framework->trimLines( $reaction ), "\n" ) . "'";
 					$fields['functional'] = "'" . $reaction['functional'] . "'";
@@ -224,6 +239,7 @@ class AgentModels extends Models {
 	public function saveMeaning( $fields ) {
 		$warnings = '';
 		if( isset( $fields['recognizer'] ) ) {
+			$fields['recognizer'] = stripslashes( $fields['recognizer'] );
 			$fields['length'] = $this->getLengthOfRecognizer( $fields['recognizer'] );
 			if( !isset( $fields['meaning_id'] ) || $fields['meaning_id'] == '' ) {
 				$recognizer = $this->framework->quoteForDatabase( $fields['recognizer'] );
@@ -310,12 +326,12 @@ class AgentModels extends Models {
 	}
 
 	public function sanitizeConditions( $conditions ) {
-		// TODO: IMPORTANT
+		// TODO: IMPORTANT -- Only allow 'and', 'or', 'not' or a known condition function.
 		return $conditions;
 	}
 
 	public function sanitizeActions( $actions ) {
-		// TODO: IMPORTANT
+		// TODO: IMPORTANT -- Only allow known function patterns... 
 		return $actions;
 	}
 
@@ -347,11 +363,8 @@ class AgentModels extends Models {
 		return $this->framework->runSql( $sql );
 	}
 
-	public function putReaction( $reaction_id, $priority, $functional, $conditions, $actions ) {
-		// TODO: WORKING..
-	}
-
 	public function reactTo( $statement ) {
+		$statement = trim( preg_replace( '/\s+/', ' ', $statement ) );
 		$meaning = $this->findClosestMeaning( $statement );
 		if( $meaning == null ) {
 			// NOTE: The Standard Meaning of an Unrecognized Statement 
@@ -378,7 +391,7 @@ class AgentModels extends Models {
 		// Collect all possible matching meaning recognizers then start comparing for best match
 		$statement_length = strlen( $statement ); 
 		//$sql = "SELECT id AS id, recognizer, paradigm FROM agent_meanings WHERE length <= {$statement_length} ORDER BY length desc";
-		$sql = "SELECT id AS id, recognizer, paradigm FROM agent_meanings ORDER BY length desc";
+		$sql = "SELECT id AS id, recognizer, paradigm FROM agent_meanings WHERE length > 1 ORDER BY length desc";
 		$meanings = $this->framework->runSql( $sql );
 
 		$matched = false;
@@ -405,7 +418,9 @@ class AgentModels extends Models {
 		if( !$matched ) {
 			foreach( $meanings as $meaning ) {
 				$recognizer = $meaning['recognizer'];
-				list( $matched, $wildcards ) = $this->compareStatementToRecognizer( strtolower( $statement ), strtolower( $recognizer ) );
+				$modified_statement  = strtolower( $statement );
+				$modified_recognizer = strtolower( $recognizer );
+				list( $matched, $wildcards ) = $this->compareStatementToRecognizer( $modified_statement, $modified_recognizer );
 				if( $matched ) {
 					$meaning_id = $meaning['id'];
 					$paradigm   = $meaning['paradigm'];
@@ -450,8 +465,27 @@ class AgentModels extends Models {
 		// If still no match, try removing anything in parenthesis
 		// TODO: interpret as what's in parenthesis, remove the parenthesis and recurse into this function with that..
 
-		//print nl2br( $notes );  -- DEBUG
+		// If no match by any other means, use the catchall (if one exists)--e.g. an "[anything]" recognizer
+		if( !$matched ) {
+			$sql = "SELECT id AS id, recognizer, paradigm FROM agent_meanings WHERE length = 1 AND recognizer like '[%]'";
+			$meanings = $this->framework->runSql( $sql );
+			if( $meanings !== null && count( $meanings ) >0 ) { 
+				$meaning = $meanings[0];
+				$recognizer = $meaning['recognizer'];
+				list( $matched, $wildcards ) = $this->compareStatementToRecognizer( $statement, $recognizer );
+				if( $matched ) {  // Note: non-matches are still possible, where recognizer is only a single character..
+					$meaning_id = $meaning['id'];
+					$paradigm   = $meaning['paradigm'];
+				}
+				else {
+					$notes .= "This didn't even match the catchall.  That shouldn't be possible.\n";
+				}
+			}
+			else { $notes .= "There is no catchall meaning (e.g. \"[anything]\").\n"; }
+		}
+
 		// TODO: Log $notes or something..
+		//print nl2br( $notes );  //-- DEBUG
 
 		// Matched or not, return the result..
 		if( $matched ) { return array( 'meaning_id' => $meaning_id, 'paradigm' => $paradigm, 'wildcards' => $wildcards ); }
@@ -599,8 +633,11 @@ class AgentModels extends Models {
 		return array( $matched, $wildcards );
 	}
 
-	private function writeInWildcardValues( $text, $wildcards ) {
+	private function writeInWildcardValues( $text, $wildcards, $invert = false ) {
 		foreach( $wildcards as $wildcard => $value ) {
+			if( $invert ) {
+				$value = $this->framework->replaceWords( $this->inversions, $value, false );
+			}
 			$text = str_replace( '[' . trim( $wildcard, "[]" ) . ']', $value, $text );
 		}
 		return $text;
@@ -750,7 +787,7 @@ class AgentModels extends Models {
 	}
 
 	private function actionSay( $params, $wildcards ) {
-		return array( $this->writeInWildcardValues( $params[1], $wildcards ) . ' ', '' );
+		return array( $this->writeInWildcardValues( $params[1], $wildcards, true ) . ' ', '' );
 	}
 
 	private function actionRemember( $params, $wildcards ) {
