@@ -1,8 +1,8 @@
-<link rel="stylesheet" href="../resources/agent/jquery-ui/css/ui-lightness/jquery-ui-1.8.24.custom.css" type="text/css" media="screen"/>	
-<script type="text/javascript" src="../resources/agent/jquery-ui/js/jquery-1.8.2.min.js"></script>
-<script type="text/javascript" src="../resources/agent/jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
-<link rel="stylesheet" href="../resources/agent/main.css" type="text/css" media="screen"/>	
-<script type="text/javascript" src="../resources/agent/meanings.js"></script>
+<link rel="stylesheet" href="{{@resource}}jquery-ui/css/ui-lightness/jquery-ui-1.8.24.custom.css" type="text/css" media="screen"/>	
+<script type="text/javascript" src="{{@resource}}jquery-ui/js/jquery-1.8.2.min.js"></script>
+<script type="text/javascript" src="{{@resource}}jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
+<link rel="stylesheet" href="{{@resource}}main.css" type="text/css" media="screen"/>	
+<script type="text/javascript" src="{{@resource}}meanings.js"></script>
 <div id="agent_editor_wrapper" class="view_wrapper">
 	<span id="editor_title" class="major_title">Brain Editor</span>
 	<span id="editor_title" class="minor_title">-- Meanings Directory --</span><br/>
@@ -31,7 +31,7 @@
 <!-- Dialog to add new meaning -->
 <div id="new_meaning_dialog" class="web_dialog">
 	<br/>
-	<form id="new_meaning_form" method="post" action="save_meaning">
+	<form id="new_meaning_form" method="post" action="{{@link}}save_meaning">
 		<table class="form_table">
 			<tr><td><label for="Recognizer_new">recognizer:</label></td><td><input type="text" id="recognizer_new" name="recognizer" class="input" value=""/></td></tr>
 			<tr><td><label for="paradigm_new">Paradigm:</label></td>

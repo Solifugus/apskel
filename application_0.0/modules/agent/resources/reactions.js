@@ -11,7 +11,7 @@ function newReaction() {
 				$( this ).dialog( 'close' ); 
 			} 
 		}, 
-		title: 'New Meaning', 
+		title: 'New Reaction', 
 		width: '600px', 
 		show: 'slide', 
 		hide: 'explode' 

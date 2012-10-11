@@ -106,16 +106,20 @@ $tables = array(
 		'actions'    => array ( 'type' => 'TEXT',                    'default' => '',   'filter' => null, 'description' => 'Textual action sequence coding to execute when this reaction is applied.' ),
 	),
 	'agent_reactions_used' => array(
-		'id'          => array ( 'type' => 'INT(11)',  'key' => 'primary' ),
-		'user_id'     => array ( 'type' => 'INT(11)',  'default' => null, 'filter' => null, 'description' => 'The ID of the user to whom this reaction use record refers.' ),
-		'meaning_id'  => array ( 'type' => 'INT(11)',  'default' => null, 'filter' => null, 'description' => 'The meaning under which this reaction applies.' ),
-		'reaction_id' => array ( 'type' => 'INT(11)',  'default' => null, 'filter' => null, 'description' => 'The reaction in reference.' ),
-		'last_used'   => array ( 'type' => 'DATETIME', 'default' => null, 'filter' => null, 'description' => 'The date/time this reaction was last used for the specified user.' ),
+		'id'          => array ( 'type' => 'INT(11)',     'key' => 'primary' ),
+		'user_id'     => array ( 'type' => 'INT(11)',     'default' => null, 'filter' => null, 'description' => 'The ID of the user to whom this reaction use record refers.' ),
+		'session_id'  => array ( 'type' => 'VARCHAR(31)', 'default' => '',   'filter' => null, 'description' => 'Uniquely identifies the session.' ),
+		'meaning_id'  => array ( 'type' => 'INT(11)',     'default' => null, 'filter' => null, 'description' => 'The meaning under which this reaction applies.' ),
+		'reaction_id' => array ( 'type' => 'INT(11)',     'default' => null, 'filter' => null, 'description' => 'The reaction in reference.' ),
+		'last_used'   => array ( 'type' => 'DATETIME',    'default' => null, 'filter' => null, 'description' => 'The date/time this reaction was last used for the specified user.' ),
 	),
 	'agent_memories' => array(
-		'id'      => array ( 'type' => 'INT(11)', 'key' => 'primary' ),
-		'memory'  => array ( 'type' => 'VARCHAR(4000)', 'default' => '', 'filter' => null, 'description' => 'Each memory is a simple textual statement itself.' ),
-		'expires' => array ( 'type' => 'DATETIME', 'default' => null,    'filter' => null, 'description' => 'The date/time this memory disappears.  Null means at the end of the current session.' ),
+		'id'         => array ( 'type' => 'INT(11)',       'key' => 'primary' ),
+		'user_id'    => array ( 'type' => 'INT(11)',       'default' => null, 'filter' => null, 'description' => 'The ID of the user to whom this reaction use record refers.' ),
+		'session_id' => array ( 'type' => 'VARCHAR(31)',   'default' => '',   'filter' => null, 'description' => 'Uniquely identifies the session.' ),
+		'memory'     => array ( 'type' => 'VARCHAR(4000)', 'default' => '',   'filter' => null, 'description' => 'Each memory is a simple textual statement itself.' ),
+		'posted'     => array ( 'type' => 'DATETIME',      'default' => null, 'filter' => null, 'description' => 'The date/time this memory was posted.' ),
+		'expires'    => array ( 'type' => 'DATETIME',      'default' => null, 'filter' => null, 'description' => 'The date/time this memory disappears.  Null means at the end of the current session.' ),
 	),
 );
 

@@ -147,6 +147,9 @@ class AgentControllers extends Controllers
 
 		// Unless a fresh visit to this page, show any missing parameters as warnings.
 		if( $fresh !== true ) { $param['warnings'] .= $missing; }
+		else {
+			if( $statement == '' ) { $statement = 'Introduce yourself.'; }
+		}
 
 		// Perform Converse logic
 		$response = $this->models->reactTo( stripslashes( $statement ) );  // returns array( 'verbal' => '..", 'nonverbal' => '..' )
@@ -172,8 +175,13 @@ class AgentControllers extends Controllers
 			case 'html':
 			default:
 				//$param  = array( 'topic' => $topic, 'response' => $xml_response );
-				$param  = array( 'topic' => $topic, 'response' => json_encode( $response ) );
-				$format = array( 'format' => 'template', 'template_file' => 'interface.html' );
+				$param  = array( 
+					'topic' => $topic, 
+					'link_back' => $this->framework->identity->getLinkBackUrl(),
+					'resources' => $this->framework->identity->getResourcesUrl(),
+					'response' => json_encode( $response )
+				);
+				$format = array( 'format' => 'template', 'template_file' => 'converse.html' );
 				return array( $param, $format );
 				break;
 		}

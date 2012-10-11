@@ -29,7 +29,7 @@ define('NOTICE',   4);
 
 class Framework {
 	// Identity object (how request arrived, to where, and settings thereof)
-	protected $identity;
+	public $identity;
 
 	// Request Settings
 	protected $session_id;             // current session ID (from php or artificially maintained via cli)
@@ -196,7 +196,7 @@ class Framework {
 		ini_set( 'display_errors', 1 );
 		error_reporting( E_ALL );
 		$this->identity = $identity;
-		$this->registration = array();          // prepares place to hold module registrations relevant for this request
+		$this->registration = array(); 
 		$this->determineSessionVariables();
 		$this->determineRequestDetails();
 	}
@@ -230,8 +230,8 @@ class Framework {
 			# TODO: shibboleth or other methods..
 			
 			# Set the landing module/request as default
-			$_SESSION['module'] = $this->getUriModule( $this->identity->settings['landing_page'] ); // module last set as session default
-			$_SESSION['request']    = $this->getUriRequest( $this->identity->settings['landing_page'] );    // request last se as session default
+			$_SESSION['module']   = $this->getUriModule( $this->identity->settings['landing_page'] ); // module last set as session default
+			$_SESSION['request']  = $this->getUriRequest( $this->identity->settings['landing_page'] );    // request last se as session default
 
 			// current session output format, unless overridden
 			if ($this->identity->request_protocol == 'cli') {
@@ -324,6 +324,8 @@ class Framework {
 			$request = $_SESSION['request'];
 		}
 
+		// Tell identity of the module to form link back URLs based on
+		$this->identity->setLinkBackModule( $module );
 		
 		// Set Module and Request Related Properties
 		$this->module_name     = $module;  // module name 
@@ -643,6 +645,8 @@ class Framework {
 	}
 
 	public function populateModuleTemplate( $module_name, $template, $fields ) {
+		$fields['@link']     = $this->identity->getLinkBackUrl();
+		$fields['@resource'] = $this->identity->getResourcesUrl();
 		$sub_templates = array();  // mapping of {{label}} to file name from {{label:file_name}} patterns
 		preg_match_all('/{{([^}]+)}}/', $template, $references);
 		foreach( $references[1] as $reference ) {

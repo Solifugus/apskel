@@ -1,0 +1,137 @@
+
+=====================================================================
+ORIGINAL ELIZA
+
+Keywords:
+Can you [something]? - Don't you believe that I can [something].
+Can I [something]? - Perhaps you would like to be able to [something].
+- You want me to be able to [something]
+- Perhaps you don't want to [something]
+You are [something] - What makes you think I am [something]?
+                    - Does it please you to believe I am [something]?
+                    - Perhaps you would like to be [something]?
+                    - Do you sometimes wish you were [something]?
+You're [something] - same as above
+I don't [something] - Do you want to be able to [something]?
+                    - Don't you really [something]?
+                    - Why don't you [something]?
+                    - Do you wish to be able to [something]?
+I feel [something] - Does that trouble you?
+                   - Tell me more about such feelings.
+                   - Do you often feel [something]?
+                   - Do you enjoy feeling [something]?
+Why don't you [something] - Do you really believe I don't [something]?
+                          - Perhaps in good time I will [something].
+                          - Do you want me to [something]?
+Why can't I [something] - Do you think you should be able to [something]?
+                        - Why can't you [something]?
+Are you [something] - Why are you interested in whether or not I am [something]?
+                    - Would you prefer if I were not [something]?
+                    - Perhaps in your fantasies I am [something].
+I can't [something] - How do you know you can't [something]?
+                    - Have you tried?
+                    - Perhaps you can now [something].
+I am [something] - Did you come to me because you are [something]?
+                 - How long have you been [something]?
+                 - Do you believe it is normal to be [something]?
+                 - Do you enjoy being [something]?
+I'm [something] -
+You [something] - We were discussion you--not me.
+                - Oh, I [something].
+                - You're not really talking about me, are you?
+I want [something] - What would it mean if you got [something]? 
+                   - Why do you want [something]?
+                   - Suppose you got [something].
+What [something] - Why do you ask?
+                 - Does that question interest you?
+                 - What answer would please you the most?
+                 - What do you think?
+How [something] - Are such questions on your mind, often?
+                - What is it you really want to know?
+                - Have you asked anyone else?
+                - What else comes to mind when you ask that?
+Who [something] - Names don't interest me.
+                - I don't care about names, go on.
+                
+Where [something] -
+When [something] -
+Why [something] -
+Name [something] -
+because [something] - Is that the real reason?
+                    - Don't any other reasons come to mind?
+                    - Does that reason explain anything else?
+                    - What other reason might there be?
+Sorry [something] - Please don't apologize.
+                  - Apologies are not necessary.
+                  - What feelings do you get when you apologize?
+- Don't be so defensive.
+Dream [something] - What does that dream suggest to you?
+                  - Do you dream often?
+                  - What persons appear in your dreams?
+                  - Are you disturbed by your dreams?
+Hello - How do you do.. Please state your problem.
+Hi -
+Maybe - You don't seem quite certain.
+      - Why the uncertain tone?
+      - You aren't sure?
+      - Don't you know?
+No - Can't you be more positive?
+   - Are you saying that just to be negative?
+   - You are being a bit negative.
+   - Why not?
+   - Are you sure?
+   - Why no?
+Your [something] - Why are you concerned about me [something]?
+                 - What about your own [something]?
+- Can you think of a specific example?
+- When?
+Always - Really, always?
+Think - What are you thinking of?
+      - Do you really think so?
+- But you are not sure you [something]?
+- Do you doubt you [something]?
+- In what way?
+Alike - What resemblence do you see?
+      - What does the similarity suggest to you?
+      - What other connections do you see?
+      - Could there really be some connection?
+      - How?
+Yes - You seem quite positive.
+    - Are you sure?
+    - I see.
+    - I understand.
+Friend - Why do you bring up the topic of friends?
+       - Do your friends worry you?
+       - Do your friends pick on you?
+       - Are you sure you have any friends?
+       - Do you impose on your friends?
+       - Perhaps your love for friends worries you?
+Computer - Do computers worry you?
+         - Are you talking about me, in particular?
+         - Are you frightened by machines?
+         - Why do you mention computers?
+         - What do you think computers have to do with your problem?
+         - Don't you think computers can help people?
+         - What is it about machines that worries you?
+
+- Say, do you have any psychological problems?
+- What does that suggest to you?
+- I see.
+- I'm not sure I understand you fully.
+- Come, elucidate your thoughts.
+- Can you elaborate on that?
+- That is quite interesting.
+
+Conjugation Data:
+are
+am
+were
+was
+you
+I 
+your
+my
+I've
+you've
+I'm
+you're

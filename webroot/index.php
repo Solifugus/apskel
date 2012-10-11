@@ -9,12 +9,16 @@
 # 2012-03-08:MCT: adding new environment loading code..
 # 2012-08-29:MCT: revised framework layout
 
+// In ~/webroot or one above?
+if( strpos( __FILE__, '/webroot/' ) === false ) { $path = ''; }
+else { $path = '../'; }
+
 // Determine How Request Arrived, Where To, and the Settings Thereof
-require_once('../identification.php');
+require_once( "{$path}identity.php" );
 $identity = new Identity();
 
 // Process the Request
-require_once("../framework.php");
+require_once("{$path}framework.php");
 $framework = new Framework( $identity );
 echo $framework->serviceRequest();
 
