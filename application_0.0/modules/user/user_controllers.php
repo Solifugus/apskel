@@ -20,15 +20,17 @@ class UserControllers extends Controllers {
 	} // end of __construct
 
 	// *** Process Initialize Requests
-	public function processInitialize( $param ) {
-		$message            = '';
-		$super_user         = $param['super_user'];
-		$super_password     = $param['super_password'];
-		$database_user      = $param['database_user'];
-		$database_password  = $param['database_password'];
-		$surname            = $param['super_surname'];
-		$forename           = $param['super_forename'];
-		$email              = $param['super_email'];
+	public function processInitialize( $param = array(), $missing = '' ) {
+		$messages           = '';
+		$super_user         = 'master';
+		$super_password     = '';
+		$database_user      = 'root';
+		$database_password  = '';
+		$surname            = 'Master';
+		$forename           = 'User';
+		$email              = '';
+
+		extract( $param );
 
 		if( $param['fresh'] !== true ) {
 			// Validate inputs
@@ -45,9 +47,9 @@ class UserControllers extends Controllers {
 				$is_bad_reason .= 'The super user password given was not strong enough. ';  // TODO: compose specifically why not strong enough (using environment setting)
 			}
 	
-			if( !$this->isValidEmail( $email ) ) {
+			if( !$this->isValidEmail( $super_email ) ) {
 				$is_bad = true;
-				$is_bad_reason .= 'The super user email given does not look valid. '; 
+				$is_bad_reason .= "The super user email (\"{$super_email}\") given does not look valid. "; 
 			}
 
 			// If no problems with inputs, go ahead and attempt to initialize..
@@ -62,21 +64,23 @@ class UserControllers extends Controllers {
 				}
 	
 				// Compose message indicating success
-				$message .= "Initialization of the user registry was successful. ";
-				$this->framework->logMessage( $message, NOTICE );
-				$param = array( 'messages' => "$message You may now login as \"$super_user\".", 'user_name' => $super_user );
-				return $this->views->composeLogin( $param );
+				$messages .= "Initialization of the user registry was successful. ";
+				$this->framework->logMessage( $messages, NOTICE );
+				$param = array( 'messages' => "$messages You may now login as \"$super_user\".", 'user_name' => $super_user );
+				$format = array( 'format' => 'template', 'template_file' => 'login.html' );
+				return array( $param, $format );
 			}
 			else {
 				// Compose message indicating failure
 				$is_bad_reason = "Initialization of the user registry failed: $is_bad_reason";
 				$this->framework->logMessage( $is_bad_reason, WARNING );
 			}
-
-			if( $message > '' )       { $param['messages'] = $message; }
-			if( $is_bad_reason > '' ) { $param['warnings'] = $is_bad_reason; }
 		}
-		return $this->views->composeInitialize( $param );
+		if( $messages > '' )          { $param['messages'] = $messages; }
+		if( isset( $is_bad_reason ) ) { $param['warnings'] = $is_bad_reason; }
+
+		$format = array( 'format' => 'template', 'template_file' => 'initialize.html' );
+		return array( $param, $format );
 	}
 
 	public function isUserStrong( $param_user ) {
@@ -101,19 +105,19 @@ class UserControllers extends Controllers {
 	}
 
 	// *** Process Register Requests (create user + activation code, but leave inactive)
-	public function processRegister( $param, $missing ) {
-		//if( !isset( $param['messages'] ) ) { $param['messages'] = ''; } 
-		if( !isset( $param['warnings'] ) ) { $param['warnings'] = ''; } 
-		$param['warnings'] .= $missing;
+	public function processRegister( $param = array(), $missing ) {
+		$messages  = '';
+		$warnings  = '';
+		$user_name = '';
+		$email     = '';
+		$surname   = '';
+		$forename  = '';
+		$password  = '';
 
-		if( !isset( $param['user_name'] ) ) { $param['user_name'] = ''; }
-		if( !isset( $param['email'] ) )    { $param['email']     = ''; }
-		if( !isset( $param['surname'] ) )  { $param['surname']   = ''; }
-		if( !isset( $param['forename'] ) ) { $param['forename']  = ''; }
-		if( !isset( $param['password'] ) ) { $param['password']  = ''; }
+		extract( $param );
 
 		if( $param['fresh'] !== true ) {
-			// If valid parameters exist, register the user..
+			$warnings .= $missing;
 			// Validate inputs
 			$is_bad = false;
 			$is_bad_reason = '';
@@ -121,38 +125,47 @@ class UserControllers extends Controllers {
 			// Check for valid CAPTCHA
 			// TODO
 
-			if( !$this->isUserStrong( $param['user_name'] ) ) {
+			if( !$this->isUserStrong( $user_name ) ) {
 				$is_bad = true;
 				$is_bad_reason .= 'The user name provided is no good. ';  // TODO: compose specifically why not strong enough (using environment setting)
 			}
 
-			if( !$this->isPasswordStrong( $param['password'] ) ) {
+			if( !$this->isPasswordStrong( $password ) ) {
 				$is_bad = true;
 				$is_bad_reason .= 'The user password given was not strong enough. ';  // TODO: compose specifically why not strong enough (using environment setting)
 			}
 	
-			if( $this->models->isUserExist( $param['user_name'] ) ) {
+			if( $this->models->isUserExist( $user_name ) ) {
 				$is_bad = true;
 				$is_bad_reason .= 'The user name chosen is already in use. '; 
 			}
 	
-			if( !$this->isValidEmail( $param['email'] ) ) {
+			if( !$this->isValidEmail( $email ) ) {
 				$is_bad = true;
 				$is_bad_reason .= 'The user email given does not look valid. '; 
 			}
 	
 			// If invalid registration then provide warnings as to why..
 			if( $is_bad === true ) {
-				$param['warnings'] .= $is_bad_reason;
+				$warnings .= $is_bad_reason;
 			}
 			else {
 				// Validation is good so register the user!! Yeah!!
-				$this->models->addUser( $param['user_name'], $param['email'], $param['password'] );
-				$param['messages'] .= "The \"{$param['user_name']}\" user was successfully registered.";
+				$this->models->addUser( $user_name, $email, $password );
+				$messages .= "The \"{$user_name}\" user was successfully registered.";
 				return "TODO: Ok, registered successfully.. where to go now?";
 			}
 		} // end of validating input (if other than fresh call to page)
-		return $this->views->composeRegister( $param );
+		$param = array( 
+			'messages' => $messages,
+			'warnings' => $warnings,
+			'user_name' => $user_name,
+			'email'     => $email,
+			'surname'   => $surname,
+			'forename'  => $forename
+		);
+		$format = array( 'format' => 'template', 'template_file' => 'register.html' );
+		return array( $param, $format );
 	}
 	
 	// Process Login Requests
@@ -171,21 +184,23 @@ class UserControllers extends Controllers {
 		if( $user_name > '' && $password > '' ) {
 			// If user/password are correct, go to appropriate page
 			if( $this->models->isPasswordCorrect( $user_name, $password, true ) ) {
-				$post_login_page = $this->framework->getSetting('post_login_page');
-				$controller = $this->framework->getUriController( $post_login_page );
-				$request    = $this->framework->getUriRequest( $post_login_page );
-				$parameters = $this->framework->getUriParameters( $post_login_page );
-				$parameters['messages'] = "Login as XX was successful.";
-				return $this->framework->getView( $controller, $request, $parameters );
+				$this->models->login( $user_name );
+				$post_login_page   = $this->framework->getSetting('post_login_page');
+				$module            = $this->framework->getUriModule( $post_login_page );
+				$request           = $this->framework->getUriRequest( $post_login_page );
+				$param             = $this->framework->getUriParameters( $post_login_page );
+				$param['messages'] = "Login as \"{$user_name}\" was successful.";
+				return $this->framework->serviceRequest( $module, $request, $param );
 			} else {
 				$param['warnings'] .= 'Authentication Failed. ';
 			}
 		}
 
 		// Show the login page
-		return $this->views->composeLogin( $param );
+		$format = array( 'format' => 'template', 'template_file' => 'login.html' );
+		return array( $param, $format );
 	}
-	
+
 	// *** Process Profile Requests (first time registration and later modifications)
 	public function processEdit( $param, $missing ) {
 		//if( !isset( $param['messages'] ) ) { $param['messages'] = ''; } 
@@ -236,7 +251,8 @@ class UserControllers extends Controllers {
 			$param['super']     = $details[0]['super'];
 			$param['active']    = $details[0]['active'];
 			$param['notes']     = $details[0]['notes'];
-			return $this->views->composeEdit( $param );
+			$format = array( 'format' => 'template', 'template_file' => 'edit.html' );
+			return array( $param, $format );
 		} 
 		else {
 			// Present not authorized warning, wait 5 seconds, and return to previous URL 
@@ -244,7 +260,10 @@ class UserControllers extends Controllers {
 			// TODO: make the following nicer..
 			//header("Refresh: 5; URL=\"{$previous_url}\""); 
 			//return "You are not authorized to view the user profile: {$param['warnings']}\n"; 
-			return "You are not authorized to view the user profile: {$param['warnings']}\n<meta http-equiv=\"refresh\" content=\"5;URL=$previous_url\">"; 
+			//return "You are not authorized to view the user profile: {$param['warnings']}\n<meta http-equiv=\"refresh\" content=\"5;URL=$previous_url\">"; 
+			$param['warnings'] .= "You are not authorized to view the user profile."; 
+			$format = array( 'format' => 'template', 'template_file' => 'warning.html' );
+			return array( $param, $format );
 		}
 	}
 
@@ -258,6 +277,51 @@ class UserControllers extends Controllers {
 	public function processRecover($param, $missing) {
 		// TODO: collect email address, put new activation code in user's notes field and mail to user
 		return $this->views->composeRecover();
+	}
+
+	// *** Process to Log User Out 
+	public function processLogout( $param, $missing ) {
+		$messages  = '';
+		$warnings  = '';
+		$user_name = '';
+
+		extract( $param );
+
+		$logged_out = false;
+
+		// If no user name provided but a user is logged in, presume that user..
+		if( $user_name == '' ) {
+			if( isset( $_SESSION['user_name'] ) ) {
+				$user_name = $_SESSION['user_name'];
+			}
+		}
+
+		// If the user is currently logged in session user..
+		if( $user_name == $_SESSION['user_name'] ) {
+			$logged_out = $this->models->logout( $user_name );
+		}
+		// If the user is not currently logged in session user.. 
+		else {
+			if( $this->models->isSuperUser() ) {
+				$logged_out = $this->models->logout( $user_name );
+			}	
+			else {
+				$warnings .= "The currently logged in user is not allowed to log out a different user.  ";
+				// TODO: log this..
+			}
+		}
+
+		if( $logged_out ) {
+			$messages .= "The \"{$user_name}\" user is logged out.  ";
+			$format    = array( 'format' => 'template', 'template_file' => 'messages.html' );
+		}
+		else {
+			$warnings .= "The user was not logged out.  ";
+			$format    = array( 'format' => 'template', 'template_file' => 'messages.html' );
+		}
+		$param = array( 'messages' => $messages, 'warnings' => $warnings );
+		//return array( $param, $format );
+		return $this->framework->serviceRequest( 'user', 'login', $param );
 	}
 	
 	// *** Process Deactivate User Requests

@@ -44,15 +44,17 @@ class Identity {
 	}
 
 	// Get URL for views to link back to
-	public function getLinkBackUrl( $protocol = null ) {
-		if( $protocol === null ) { $protocol = $this->request_protocol; }
-		return "{$protocol}://{$this->request_address}/{$this->link_back_module}/";	
+	public function getLinkBackUrl( $protocol = null, $module_name = null ) {
+		if( $protocol    === null ) { $protocol    = $this->request_protocol; }
+		if( $module_name === null ) { $module_name = $this->link_back_module; }
+		return "{$protocol}://{$this->request_address}/{$module_name}";	
 	}
 
 	// Get URL for resources to link back to
-	public function getResourcesUrl( $protocol = null ) {
-		if( $protocol === null ) { $protocol = $this->request_protocol; }
-		return "{$protocol}://{$this->request_address}/resources/{$this->link_back_module}/";	
+	public function getResourcesUrl( $protocol = null, $module_name = null ) {
+		if( $protocol    === null ) { $protocol    = $this->request_protocol; }
+		if( $module_name === null ) { $module_name = $this->link_back_module; }
+		return "{$protocol}://{$this->request_address}/resources/{$module_name}";	
 	}
 
 	// *** Get URL Components (whether from webserver or command line arguments)

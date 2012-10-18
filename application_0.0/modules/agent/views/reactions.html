@@ -1,13 +1,17 @@
-<link rel="stylesheet" href="{{@resource}}jquery-ui/css/ui-lightness/jquery-ui-1.8.24.custom.css" type="text/css" media="screen"/>        
-<script type="text/javascript" src="{{@resource}}jquery-ui/js/jquery-1.8.2.min.js"></script>
-<script type="text/javascript" src="{{@resource}}jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
-<link rel="stylesheet" href="{{@resource}}main.css" type="text/css" media="screen"/>
-<script type="text/javascript" src="{{@resource}}reactions.js"></script>
+<!-- Custom jQuery UI css builder: http://jqueryui.com/themeroller/ -->
+<link rel="stylesheet" href="{{@resource}}/jquery-ui.css" type="text/css" media="screen"/>        
+<script type="text/javascript" src="{{@resource}}/jquery-ui/js/jquery-1.8.2.min.js"></script>
+<script type="text/javascript" src="{{@resource}}/jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
+<link rel="stylesheet" href="{{@resource}}/main.css" type="text/css" media="screen"/>
+<script type="text/javascript" src="{{@resource}}/reactions.js"></script>
 <div id="agent_editor_wrapper" class="view_wrapper">
+	{{=application_header.html}}
 	<span id="editor_title" class="major_title">Brain Editor</span>
 	<span id="editor_title" class="minor_title">-- Available Reactions To Meaning --</span><br/>
 	<span id="recognizer" class="">{{recognizer}}</span><br/>
-	Possible reactions are shown below, in order of priority.  The paradigm for this meaning is {{paradigm}}.
+	For each reaction, there are <b>conditions</b><img id="conditions_help_icon" src="{{@resource}}/help.png"/> 
+	and an <b>action sequence</b><img id="actions_help_icon" src="{{@resource}}/help.png"/>.
+	Possible reactions are shown below, in order of priority.  The paradigm for this meaning is {{paradigm}}.<br/>
 	<hr/>
 	<div id="reaction_directory" class="">
 {{reactions:reaction.html}}
@@ -17,12 +21,12 @@
 		<input type="button" id="new_reaction_button" class="button" value="New Reaction"/>
 	</div>
 	<hr/>
-{{=shared_footer.html}}
+{{=application_footer.html}}
 </div>
 
 <!-- Dialog to add new meaning -->
 <div id="new_reaction_dialog" class="web_dialog">
-	<form id="new_reaction_form" method="post" action="{{@link}}save_reaction">
+	<form id="new_reaction_form" method="post" action="{{@link}}/save_reaction">
 		<input type="hidden" name="meaning_id" value="{{meaning_id}}"/>
 		<table class="reaction_definition">
 			<tr>
@@ -41,17 +45,35 @@
 			</tr>
 			<tr>
 				<td colspan="3">
-					<label for="conditions_edit">Conditions:</label><br/> 
+					<label for="conditions_edit">Conditions</label><br/>
 					<textarea id="conditions_edit" name="conditions" class="reaction_conditions modifiable"></textarea>
 				</td>
 			</tr>
 			<tr>
 				<td colspan="3">
-					<label for="actions_edit">Reactions:</label><br/> 
+					<label for="actions_edit">Reactions</label><br/> 
 					<textarea id="actions_edit" name="actions" class="reaction_actions modifiable">say " "</textarea>
 				</td>
 			</tr>
 		</table>
 	</form>
 </div>
+
+<!-- Dialog for Conditions Help -->
+<div id="conditions_help_dialog" class="web_dialog">
+	A reaction's conditions are a logic statement that evaluates to either true or false 
+	(blank is true).  Any of the following functions may be used in conjuction with 
+	"and", "or", "not" relational keywords and/or parenthesis for order of precidents.<br/>
+	<br/>
+	<ul>
+		{{condition_functions:conditional_function.html}}
+	</ul>
+	<br/>
+	For example, the below function would return true only if there are more than 3 instances
+	of memories (as set by the "remember" action command) that match the specified text pattern.<br/>
+	(is >3 "[name] is my friend")
+</div>
+
+{{=actions_help_dialog.html}}
+
 

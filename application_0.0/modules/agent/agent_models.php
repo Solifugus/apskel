@@ -25,6 +25,8 @@ class AgentModels extends Models {
 			'I'     => 'you',
 			'you'   => 'me',
 			'me'    => 'you',
+			'am'    => 'are',
+			'are'   => 'am',
 			'my'    => 'your',  
 			'your'  => 'my',
 			'yours' => 'mine',
@@ -42,25 +44,25 @@ class AgentModels extends Models {
 			'php_function'     => '$this->isQuantity( \'${1}\', ${2}, "${3}", $wildcards )',
 			'regex_pattern'    => '/\(\s*is\s*([=><]?)\s*([0-9]+)\s*"([^"]*)"\s*\)/i',
 			'display_pattern'  => '(IS {|>|<}n "..")',
-			'description'      => 'True if n, greater than n, or less than n (respective to (nothing), >, or < being used) number of “..” matches are found in memory.',
+			'description'      => 'True if n, greater than n, or less than n (respective to (nothing), >, or < being used) number of ".." matches are found in memory.',
 		);
 		$this->conditionals[] = array(
 			'php_function'     => '$this->isAll( "${1}", \'${2}\', "${3}", $wildcards )',
 			'regex_pattern'    => '/\(\s*isall\s*"([^"]*)"\s*([=><])\s*"([^"]*)"\s*\)/i',
 			'display_pattern'  => '(ISALL ".." {=|>|<} "..")',
-			'description'      => 'True if, for all of the first “..” matches, a match from the second “..” exists with like-named variables values greater than, less than, or equal (respective to <, >, or = being used).',
+			'description'      => 'True if, for all of the first ".." matches, a match from the second ".." exists with like-named variables values greater than, less than, or equal (respective to <, >, or = being used).',
 		);
 		$this->conditionals[] = array(
 			'php_function'     => '$this->isAny( "${1}", \'${2}\', "${3}", $wildcards )',
 			'regex_pattern'    => '/\(\s*isany\s*"([^"]*)"\s*([=><])\s*"([^"]*)"\s*\)/i',
 			'display_pattern'  => '(ISANY ".." {=|>|<} "..")',
-			'description'      => 'True if, for any of the first “..” matches, a match from the second “..” exists with like-named variables values greater than, less than, or equal (respective to <, >, or = being used).',
+			'description'      => 'True if, for any of the first ".." matches, a match from the second ".." exists with like-named variables values greater than, less than, or equal (respective to <, >, or = being used).',
 		);
 		$this->conditionals[] = array(
 			'php_function'     => '$this->isCan( "${1}", $wildcards )',
 			'regex_pattern'    => '/\(\s*iscan\s*"([^"]*)"\s*\)/i',
 			'display_pattern'  => '(can "..")',
-			'description'      => 'True if a path from the current status to the given agent response (“..”) can be plotted.',
+			'description'      => 'True if a path from the current status to the given agent response ("..") can be plotted.',
 		);
 
 		// Register Actuational Functions
@@ -137,6 +139,29 @@ class AgentModels extends Models {
 		);
 
 	} // end of __construct method
+
+	// Provide array of condition functions for documentation purposes..
+	public function getConditionDescriptions() {
+		$conditions = array();
+		foreach( $this->conditionals as $conditional ) {
+			$conditions[] = array ( 
+				'display_pattern' => htmlspecialchars( $conditional['display_pattern'] ), 
+				'description'     => htmlspecialchars( $conditional['description'] ) 
+			); 
+		}
+		return $conditions;
+	}
+
+	// Provide array of action commands for documentation purposes..
+	public function getActionDescriptions() {
+		$actions = array();
+		foreach( $this->actuationals as $actional ) { $actions[] = array ( 
+			'display_pattern' => htmlspecialchars( $actional['display_pattern'] ), 
+			'description'     => htmlspecialchars( $actional['description'] ) 
+			); 
+		}
+		return $actions;
+	}
 
 	// Upload from XML (optionally removing all content prior to upload, else just adding/overwriting)
 	public function importXml( $script_xml, $replace_all = false ) {
@@ -235,6 +260,15 @@ class AgentModels extends Models {
 		return $xml . "</agent>\n";
 	}
 
+	// Save Topic
+	public function saveTopic( $fields ) {
+		$fields['title']       = $this->framework->quoteForDatabase( $fields['title'] );
+		$fields['description'] = $this->framework->quoteForDatabase( $fields['description'] );
+		$fields['actions']     = $this->framework->quoteForDatabase( $this->sanitizeActions( stripslashes( $fields['actions'] ) ) );
+		$this->updateElseInsert( 'agent_topics', $fields, "title = {$fields['title']}" );
+		// TODO: get and return the record's ID; also log this..
+	}
+
 	// Adds a new meaning, as identified by recognizer
 	public function saveMeaning( $fields ) {
 		$warnings = '';
@@ -326,13 +360,37 @@ class AgentModels extends Models {
 	}
 
 	public function sanitizeConditions( $conditions ) {
-		// TODO: IMPORTANT -- Only allow 'and', 'or', 'not' or a known condition function.
+		// WORKING... XXX
 		return $conditions;
 	}
 
 	public function sanitizeActions( $actions ) {
-		// TODO: IMPORTANT -- Only allow known function patterns... 
-		return $actions;
+		$sanitized_actions = '';
+		$lines = explode( "\n", $actions );
+		foreach( $lines as $line ) {
+			// Check for Syntax Error 
+			$line = trim( $line );
+			if( $line == '' ) { continue; }
+			$valid = false;
+			foreach( $this->actuationals as $actuator ) {
+				if( preg_match( $actuator['regex_pattern'], $line, $parameters ) ) {
+					$valid = true;
+					break;
+				}
+			}
+			if( $valid == false && substr( $line, 0, 2 ) != '//' ) { $line = "// Syntax Error: {$line}"; }
+
+			// Check for Injection Attack 
+			// TODO: Check to see if this is true:
+			//       - Only possible place for an injection is from within quotes.
+			//       - Only way to inject is by escaping quotes.
+			//       - There is no way to escape these quotes without breaking command syntax
+			//         Hence the above synax error would comment it out.. rendering it not executed by PHP 
+
+			$sanitized_actions .= "$line\n";
+		}
+	
+		return $sanitized_actions;
 	}
 
 	public function getAllMeanings( $alphabetic = true ) {
@@ -361,6 +419,18 @@ class AgentModels extends Models {
 	public function getAllReactionsByMeaning( $meaning_id ) {
 		$sql = "SELECT id, priority, functional, conditions, actions FROM agent_reactions WHERE meaning_id = {$meaning_id} ORDER BY priority";
 		return $this->framework->runSql( $sql );
+	}
+
+	public function getAllTopics() {
+		$sql = "SELECT id, title, description, actions FROM agent_topics ORDER BY title";
+		$results = $this->framework->runSql( $sql );
+		$topics = array();
+		if( count( $results ) > 0 ) {
+			foreach( $results as $result ) {
+				$topics[] = array( 'id' => $result['id'], 'title' => $result['title'], 'description' => $result['description'], 'actions' => $result['actions'] );
+			}
+		}
+		return $topics;
 	}
 
 	public function reactTo( $statement ) {
@@ -653,19 +723,6 @@ class AgentModels extends Models {
 		foreach( $this->conditionals as $condition ) {
 			$conditions = preg_replace( $condition['regex_pattern'], $condition['php_function'], $conditions );
 		}
-		//$english_logic = array( '/([^"]*)and([^"]*)/i', '/([^"]*)or([^"]*)/i', '/([^"]*)not([^"]*)/i' );
-		//$php_logic     = array( '${1}&&${2}', '${1}||${2}', '${1}!${2}' );
-		//$conditions = preg_replace( $english_logic, $php_logic, $conditions );
-		/*  XXX
- !regex (is >0 "something") and (is =0 "one and two")  s/(?<!")(.*?)(and)(?!=.*")/\1&&/
-<pork> [Result: 1] (is >0 "something") && (is =0 "one and two")
-* Milossh has quit (Quit: Computer has gone to sleep.)
-<Kinny> !regex Test with and of "no and replacement" another and with an and plus and"and not replacing and or and""with and not" and end test s/((?:(?:[^"]*?)(?:"[^"]*")*)*)(and)/\1&&/g
-<pork> [Result: 5] Test with && of "no and replacement" another && with an && plus &&"and not replacing and or and""with and not" && end test
-<Kinny> !regex (is >0 "something") and (is =0 "one and two") and (is >0 "something") and (is =0 "one and two")  s/\G((?:(?:[^"]*?)(?:"[^"]*")*)*)(and)/\1&&/g
-<pork> [Result: 3] (is >0 "something") && (is =0 "one and two") && (is >0 "something") && (is =0 "one and two")
-<Kinny> $pattern = '/\G((?:(?:[^"]*?)(?:"[^"]*")*)*)(and)/'; $replace = '${1}&&'; $output = preg_replace($pattern, $replace, $input);
-		*/
 		$quoted = false;
 		for( $position = 0; $position <= strlen( $conditions ); $position++ ) {
 			if( substr( $conditions, $position, 1) == '"' ) {
@@ -765,6 +822,7 @@ class AgentModels extends Models {
 		$lines = explode( "\n", trim( $actions ) );
 		foreach( $lines as $line ) {
 			$line = trim( $line );
+			$line = preg_replace( '/\/\/.*/', '', $line );  // Remove comments
 			if( $line == '' ) { continue; }
 			$actuator_function = null;
 			foreach( $this->actuationals as $actuator ) {

@@ -25,8 +25,13 @@ class AgentControllers extends Controllers
 
 	} // end of __construct method
 
+	// Controller's Default Method
+	public function process( $param ) {
+		return "blah.. blah..<br/>\n" . print_r( $param, true );
+	}
+
 	// Controller for the Initialize Request
-	public function processInitialize( $param = array() ) {
+	public function processInitialize( $param = array(), $missing = '' ) {
 
 		// Set parameter defaults (in case any required ones are missing)
 		$messages = '';
@@ -177,8 +182,6 @@ class AgentControllers extends Controllers
 				//$param  = array( 'topic' => $topic, 'response' => $xml_response );
 				$param  = array( 
 					'topic' => $topic, 
-					'link_back' => $this->framework->identity->getLinkBackUrl(),
-					'resources' => $this->framework->identity->getResourcesUrl(),
 					'response' => json_encode( $response )
 				);
 				$format = array( 'format' => 'template', 'template_file' => 'converse.html' );
@@ -189,13 +192,11 @@ class AgentControllers extends Controllers
 	} // end of processConverse controller
 
 	// Controller for the Create_topic Request
-	public function processCreateTopic( $param = array() ) {
+	public function processTopics( $param = array(), $missing = '' ) {
 
 		// Set parameter defaults (in case any required ones are missing)
 		$messages = '';
 		$warnings = '';
-		$topic = '';
-		$passcode = '';
 
 		// Convert all request variables to local variables (except for any required by missing)
 		extract( $param );
@@ -203,15 +204,25 @@ class AgentControllers extends Controllers
 		// Unless a fresh visit to this page, show any missing parameters as warnings.
 		if( $fresh !== true ) { $param['warnings'] .= $missing; }
 
-		// Perform Create_topic logic
-		// TODO
+		// Perform Topics logic
+		$param['topics'] = $this->models->getAllTopics();
+		if( count( $param['topics'] ) == 0 ) { $param['no_topics_message'] = "(No Topics Currently Exist)"; }
 
 		// Compose and Output the View;
-		return $this->views->composeCreateTopic( $param );
+		$format = array( 'format' => 'template', 'template_file' => 'topics.html' );
+		return array( $param, $format );
 	} // end of processCreate_topic controller
 
+	// Controller for the "save_meaning" Request
+	public function processSaveTopic( $param = array(), $missing = '' ) {
+		$this->models->saveTopic( $this->framework->removeAllBut( array( 'title', 'description', 'actions' ), $param ) );
+
+		// Compose and Output the View
+		return $this->processTopics( array( 'fresh' => $param['fresh'] ) );  // for now, we'll just do this..
+	}
+
 	// Controller for the Meanings Request
-	public function processMeanings( $param = array() ) {
+	public function processMeanings( $param = array(), $missing = '' ) {
 
 		// Set parameter defaults (in case any required ones are missing)
 		$messages  = '';
@@ -289,6 +300,8 @@ class AgentControllers extends Controllers
 		$meaning = $this->models->getMeaning( $meaning_id );
 		$response = array_merge( $response, $meaning );
 		$response['paradigm'] = $this->framework->mapToKey( $response['paradigm'], $this->models->paradigm_mappings, 'natural' );
+		$response['condition_functions'] = $this->models->getConditionDescriptions();
+		$response['action_commands']     = $this->models->getActionDescriptions();
 
 		// Compose and Output the View
 		$format = array( 'format' => 'template', 'template_file' => 'reactions.html' );
@@ -321,11 +334,9 @@ class AgentControllers extends Controllers
 
 		// Compose and Output the View
 		$format = array( 'format' => 'template', 'template_file' => 'meanings.html' );
-		//return array( $response, $format );  // TODO: at some point, provide xml, json, and html return formats..
 		$response['fresh'] = $fresh;
 		return $this->processReactions( $this->framework->removeAllBut( array( 'meaning_id', 'warnings', 'fresh' ), $response ) );  // for now, we'll just do this..
 	} // end of processMeanings request handler 
-
 
 } // end of AgentControllers class
 

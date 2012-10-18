@@ -1,0 +1,40 @@
+<!-- Custom jQuery UI css builder: http://jqueryui.com/themeroller/ -->
+<link rel="stylesheet" href="{{@resource}}/jquery-ui.css" type="text/css" media="screen"/>
+<script type="text/javascript" src="{{@resource}}/jquery-ui/js/jquery-1.8.2.min.js"></script>
+<script type="text/javascript" src="{{@resource}}/jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
+<link rel="stylesheet" href="{{@resource}}/main.css" type="text/css" media="screen"/>	
+<script type="text/javascript" src="{{@resource}}/topics.js"></script>
+<div id="agent_editor_wrapper" class="view_wrapper">
+	{{=application_header.html}}
+	<span id="editor_title" class="major_title">Conversation Topics</span>
+	<span id="editor_title" class="minor_title">-- Topics Directory --</span><br/>
+	<br/>
+	The intent of topics is as a way to enter a conversation with a certain, initial set of contexts (conditions).
+	This may be performed by entering the conversation via a topic-specific URL or conversationally.  Furthermore,
+	one topic may be entered after another, overlaying them in the order of precidents of more or less recent.
+	<hr/>
+	<div id="topic_directory" class="">
+		{{no_topics_message}}
+		{{topics:topic_title.html}}
+	</div>
+	<hr/>
+	<div id="topics_buttons" class="button_bar">
+		
+		<input type="button" class="button" id="create_topic_button" class="button" value="Create Topic"/>
+	</div>
+	<hr/>
+	{{=application_footer.html}}
+</div>
+
+<!-- Dialog to add new topic -->
+<div id="new_topic_dialog" class="web_dialog">
+	<br/>
+	<form id="new_topic_form" method="post" action="{{@link}}/save_topic">
+		<label for="title">Title: </label><input type="text" id="title_new" name="title" class="input" value="" size="400"/><br/>
+		<label for="description">Description:</label><br/>
+		<textarea id="description_new" name="description" class="input" rows="10" cols="400"></textarea><br/>
+		<label for="actions">Actions:</label><br/>
+		<textarea id="actions_new" name="actions" class="input" rows="5" cols="400"></textarea><br/>
+	</form>
+</div>
+

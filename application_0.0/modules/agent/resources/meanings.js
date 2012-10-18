@@ -21,6 +21,35 @@ function newMeaning() {
 	//$( '#ajax_return' ).load( converse_uri, '', processAgentResponse );
 }
 
+function recognizerHelp() {
+	$('#recognizer_help_dialog').dialog( { 
+		buttons: { 
+			'OK': function() { 
+				$( this ).dialog( 'close' ); 
+			} 
+		}, 
+		title: 'Recognizer Help', 
+		width: '600px', 
+		show: 'slide', 
+		hide: 'slide' 
+	} );
+}
+
+function paradigmHelp() {
+	$('#paradigm_help_dialog').dialog( { 
+		buttons: { 
+			'OK': function() { 
+				$( this ).dialog( 'close' ); 
+			} 
+		}, 
+		title: 'Paradigm Help', 
+		width: '600px', 
+		show: 'slide', 
+		hide: 'slide' 
+	} );
+}
+
+
 function saveChanges() {
 	// TODO: submit changes
 }
@@ -31,6 +60,8 @@ function changeMade() {
 
 $(document).ready(function(){
         $('#new_meaning_button').click( newMeaning );
+	$('#recognizer_help_icon').click( recognizerHelp );
+	$('#paradigm_help_icon').click( paradigmHelp );
 });
 
 

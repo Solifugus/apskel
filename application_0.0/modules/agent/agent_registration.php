@@ -4,6 +4,7 @@
 
 $requests = array(
 	'description' => 'Provides a agent to communicate with conversationally, including the ability to create and/or modify new topics and interaction logic.',
+	'default' => 'converse',
 	'requests' => array(
 		'initialize' => array(
 			'description' => 'Sets up database tables for initial use of the agent module.',
@@ -60,9 +61,9 @@ $requests = array(
 		'save_topic' => array(
 			'description' => 'Appends new or overwrites old topic.',
 			'parameters' => array(
-				array( 'name' => 'topic',    'required' => true ,  'default' => '', 'description' => 'The topic\'s unique (up to 15 character) title.' ),
-				array( 'name' => 'actions',  'required' => false , 'default' => '', 'description' => 'The action sequence that sets up the topic (typically a list of "remember" actions with an "interpret as" or "say" action at the end).' ),
-				array( 'name' => 'passcode', 'required' => false , 'default' => '', 'description' => 'Associates the topic with this passcode, rendering it private/secure.' ),
+				array( 'name' => 'title',       'required' => true,  'default' => '',  'description' => 'The topic\'s unique (up to 15 character and URL-compatible) title.' ),
+				array( 'name' => 'description', 'required' => true,  'default' => '',  'description' => 'The topic\'s short description.' ),
+				array( 'name' => 'actions',     'required' => true,  'default' => '',  'description' => 'The action sequence that sets up the topic (typically a list of "remember" actions with an "interpret as" or "say" action at the end).' ),
 			)
 		),
 		'import' => array(
@@ -87,8 +88,8 @@ $tables = array(
 	'agent_topics' => array(
 		'id'          => array ( 'type' => 'INT(11)',       'key' => 'primary' ),
 		'title'       => array ( 'type' => 'VARCHAR(15)',   'default' => null,    'filter' => null, 'description' => 'URL-compatible label for the topic.' ),
-		'description' => array ( 'type' => 'VARCHAR(4000)', 'default' => 'N',     'filter' => null, 'description' => 'Free-hand textual description for the topic.' ),
-		'actions'     => array ( 'type' => 'TEXT',          'default' => 'N',     'filter' => null, 'description' => 'The actions required to topic (ideally, list of "remember" statements ending with an "interpret as" statement.' ),
+		'description' => array ( 'type' => 'VARCHAR(4000)', 'default' => '',      'filter' => null, 'description' => 'Free-hand textual description for the topic.' ),
+		'actions'     => array ( 'type' => 'TEXT',          'default' => '',      'filter' => null, 'description' => 'The actions required to topic (ideally, list of "remember" statements ending with an "interpret as" statement.' ),
 	),
 	'agent_meanings' => array(
 		'id'         => array ( 'type' => 'INT(11)',      'key' => 'primary' ),

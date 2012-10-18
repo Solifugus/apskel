@@ -155,6 +155,26 @@ class UserModels extends Models
 		return false;  // TODO
 	}
 
+	// Logs user in -- irrespective of any validation
+	public function login( $user_name ) {
+		$_SESSION['user_name'] = $user_name;
+		// $_SESSION['user_id']   =  XXX
+		// TODO: log this
+	}
+
+	public function logout( $user_name ) {
+		if( $user_name == $_SESSION['user_name'] ) {
+			$_SESSION['user_name'] = '';
+			$_SESSION['user_id']   = null;
+			return true;
+		}
+		if( $this->isSuperUser() ) {
+			// TODO: logout user of other session..
+			return true;
+		}
+		return false;
+	}
+
 	// Initialize User Tables
         public function initializeTables( $param_user, $param_password, $param_surname, $param_forename, $param_email, $param_database_user = null, $param_database_password = null ) {
                 $user         = $param_user;
@@ -170,37 +190,6 @@ class UserModels extends Models
                 $sql = "INSERT INTO {$table_prefix}users ( user_name, password, surname, forename, email, super) VALUES ('$user', '$password', '$surname', '$forename', '$email', true);";
 		$this->framework->runSql($sql);
 		return; 
-
-		/*
-		$table_prefix = $this->framework->getDatabaseName() . '.' . $this->framework->getDatabasePrefix();
-
-                $sql = <<<EndOfSQL
-                DROP TABLE IF EXISTS {$table_prefix}users;
-                CREATE TABLE {$table_prefix}users (
-                        id         INTEGER not null auto_increment,
-                        user_name  VARCHAR(15),           -- user reference for login and general display/use
-			password   VARCHAR(32),           -- md5('salt' . md5('password')),
-                        surname    VARCHAR(15),           -- family or main name
-                        forename   VARCHAR(15),           -- given or sub-name
-                        email      VARCHAR(60),           -- email through which to communicate with the user outside of this site
-                        super      BOOLEAN DEFAULT false, -- is a super user?  true = yes; false = no
-                        active     BOOLEAN DEFAULT true,  -- is an active user?  true = yes; false = no
-                        PRIMARY KEY ( id )
-                );
-
-                INSERT INTO {$table_prefix}users ( user_name, password, surname, forename, email, super) VALUES ('$user', '$password', '$surname', '$forename', '$email', true);
-
-                DROP TABLE IF EXISTS {$table_prefix}user_attributes;
-                CREATE TABLE {$table_prefix}user_attributes (
-                        id  INTEGER not null auto_increment,
-                        user_id    INTEGER,      -- references the user
-                        attribute  VARCHAR(15),  -- variable attribute name
-                        value      TEXT,         -- variable attribute value
-                        PRIMARY KEY ( id )
-                );
-EndOfSQL;
-		$this->framework->runSql($sql);
-		*/
         }
 
 } // End of Class

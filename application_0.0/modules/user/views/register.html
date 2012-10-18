@@ -1,0 +1,21 @@
+<link rel="stylesheet" href="{{@resource}}/main.css" type="text/css" media="screen"/>	
+<script type="text/javascript" src="{{@resource}}/register.js"></script>
+<div id="profile_view_wrapper" class="view_wrapper">
+	{{=application_header.html}}
+	<span id="minor_title">New User Registration</span><br/><hr/>
+	{{=message_area.html}}
+	<br/>
+	<form id="profile_edit_form" method="post" action="{{@link}}/register">
+		<label for="user_name"      class="label">User Name: </label> <input name="user_name"      id="user_name"      class="input" value="{{user_name}}"/><br/>
+		<label for="email"          class="label">Email:     </label> <input name="email"          id="email"          class="input" value="{{email}}" /><br/>
+		<label for="forename"       class="label">Forename:  </label> <input name="forename"       id="forename"       class="input" value="{{forename}}" /><br/>
+		<label for="surname"        class="label">Surname:   </label> <input name="surname"        id="surname"        class="input" value="{{surname}}" /><br/>
+		<label for="password_once"  class="label">Password:  </label> <input name="password_once"  id="password_once"  class="input" type="password" /><br/>
+		<label for="password_twice" class="label">Repeat:    </label> <input name="password_twice" id="password_twice" class="input" type="password" /><br/>
+		<input type="hidden" name="password" id="password" value="" />
+		<input type="hidden" name="fresh"    id="fresh"    value="false" />
+		<input type="button" id="button_save" class="button" value="Submit" onClick="submitFormIfReady();" /><br/>
+	</form>
+	{{=application_footer.html}}
+</div>
+

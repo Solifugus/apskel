@@ -1,0 +1,45 @@
+<link rel="stylesheet" href="{{@resource}}/main.css" type="text/css" media="screen"/>
+
+<!-- HTML Conversational Agent Interface -->
+<div id="reference_meanings_wrapper" class="view_wrapper">
+	{{=application_header.html}}
+	<span id="title" class="minor_title">Meanings Reference</span>
+	<hr/>
+	{{=message_area.html}}
+	<br/>
+	A meaning is essentially a reference to a set of available reactions.  Each
+	meaning comprises of a "recognizer" and a "paradigm".  The recognizer is a text
+	pattern that, when matched by a user statement, choosing from among available
+	reactions to that meaning, based upon a paradigm.<br/>
+	<br/>
+	Recognizers<br/>
+	A recognizer is a simple text pattern--letters, numbers, punctuation, 
+	and other visible characters but also optionally wildcards.  A wildcard
+	is a word within square brackets that represents anything the user
+	writes in that space.  Later in the reaction, that word can be used to
+	reference what the user wrote in the wildcard space.  For example:<br/>
+	<br/>
+	I think the [group] can win against the [other group].<br/>
+	<br/>
+	The above recognizer will match user statements like the following:<br/>
+	<br/>
+	I think the cardinals will win against the dodgers.<br/>
+	<br/>
+	In the above, the [group] wildcard holds the value "cardinals" and the
+	wildcard [other group] holds the value "dodgers".<br/>
+	<br/>
+	Paradigms<br/>
+	A meaning's paradigm is the method by which it chooses from among its
+	available reactions.  At present, there are three options:<br/>
+	<ul>
+		<li>natural -- Similar to actual human behavior.  Reactions
+		are chosen in order, except when not repeated for a while,
+		the order slips back up toward the top.</li>
+		<li>cyclic -- Simply in order and then back to the first again
+		repeating in circles.</li>
+		<li>random -- A simple random pick each time.</li>
+	</ul>
+	<br/>
+	{{=application_footer.html}}
+</div>
+

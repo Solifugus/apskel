@@ -3,12 +3,10 @@
 <script type="text/javascript" src="../resources/agent/jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
 <link rel="stylesheet" href="../resources/agent/main.css" type="text/css" media="screen"/>
 <div id="agent_edit_raw_wrapper" class="view_wrapper">
-	<span id="download_title" class="major_title">{{title}}</span>
+	{{=application_header.html}}
+	<span id="download_title" class="minor_title">{{title}}</span>
 	<hr/>
-	<div id="message_area" class="message_area">
-		<span id="messages" class="messages">{{messages}}</span><br/>
-		<span id="warnings" class="warnings">{{warnings}}</span><br/>
-	</div>
+	{{=message_area.html}}
 	<br/>
 	<form method="post" action="import">
 		<div id="code_area">
@@ -16,5 +14,6 @@
 		<div>
 		<input id="" type="reset" class="button" value="RESET"/> <input id="" type="submit" class="button" value="IMPORT"/><br/>
 	</div>
+	{{=application_footer.html}}
 </div>
 

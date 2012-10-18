@@ -94,8 +94,8 @@ class Framework {
 	}
 
 	public function getRequestMethodName( $param_request_name = null) {
-		if( $param_request_name == null ) { $request_name = $this->getModuleName(); }
-		else                                 { $request_name = $param_request_name; }
+		if( $param_request_name == null ) { $request_name = $this->getRequestName(); }
+		else                              { $request_name = $param_request_name; }
 		return 'process' . ucfirst( $this->getFunctionizedName( $request_name ) );
 	}
 
@@ -225,16 +225,20 @@ class Framework {
 		}
 		
 		// If Session is New, Set Up Defaults, etc.
-		if (!isset($_SESSION['user_name'])) {
+		if ( !isset( $_SESSION['user_name'] ) ) {
 			# Can we get the user?
 			# TODO: shibboleth or other methods..
+
+			// Set Default User ID (nobody)
+			$_SESSION['user_name'] = '';
+			$_SESSION['user_id']   = null;
 			
-			# Set the landing module/request as default
+			// Set the landing module/request as default
 			$_SESSION['module']   = $this->getUriModule( $this->identity->settings['landing_page'] ); // module last set as session default
 			$_SESSION['request']  = $this->getUriRequest( $this->identity->settings['landing_page'] );    // request last se as session default
 
 			// current session output format, unless overridden
-			if ($this->identity->request_protocol == 'cli') {
+			if( $this->identity->request_protocol == 'cli' ) {
 				$_SESSION['output_format'] = 'html';
 			} else {
 				$_SESSION['output_format'] = 'html';
@@ -269,33 +273,34 @@ class Framework {
 			$uri_parameters = explode('/', $this->identity->request_path);
 
 			// Get module name, if in URL
-			if (count($uri_parameters > 0)) {
+			if ( count( $uri_parameters > 0 ) ) {
 				$module = $uri_parameters[0];
 			}
 
 			// Get request name, if in URL
-			if ( count($uri_parameters) > 1 ) {
-				$request = $uri_parameters[1];
+			if ( count( $uri_parameters ) > 1 ) {
+				if( strpos( $uri_parameters[1], '=' ) === false ) { $request = $uri_parameters[1]; }
+				else { $request = ''; }
 			}
 
 			// Get array element number of first parameter (presuming first two are, indeed, module and request)
-			if ( count($uri_parameters) > 2 ) {
+			if ( count( $uri_parameters ) > 2 ) {
 				$current_param = 2;
 			} else {
-				$current_param = count($uri_parameters) - 1;
+				$current_param = count( $uri_parameters ) - 1;
 			}
 
 			// If $module doesn't exist then interpret as a parameter and revert to the session default module/request..
 			$module = strtolower($module);
-			if ( !$this->isModule( $module ) && $module !== 'resources' ) {
+			if ( !$this->isModule( $module ) && !$this->isReservedModule( $module ) ) {
 				$module        = $_SESSION['module'];
 				$request       = $_SESSION['request'];
 				$current_param = 0; // revert to all uriParameters being request parameters
 			}
 			
 			// if $request doesn't exist under $module then interpret as a parameter and revert to the module's 'default' request..
-			if( !isset( $request ) && $module !== 'resources' ) {
-				$request       = $_SESSION['request'];
+			if( !isset( $request ) && !$this->isReservedModule( $module ) ) {
+				$request       = '';  // should result in execution of module's "process$module()" method
 				$current_param = 1; // revert to all uriParameters after the first (module) as being request parameters
 			}
 
@@ -304,24 +309,25 @@ class Framework {
 			foreach( $get_parameters as $get_parameter => $get_value ) { $_REQUEST[$get_parameter] = $get_value; }
 
 			// Collect request parameters and override web request ($_REQUEST) parameters with them..
-			while ($current_param < count($uri_parameters)) {
+			while ( $current_param < count( $uri_parameters ) ) {
 				# for each request parameter, take anything after first '=' as its value else assign null to it
-				$parts = explode('=', urldecode($uri_parameters[$current_param]), 2);
-				if (isset($parts[1])) {
-					$_REQUEST[trim($parts[0])] = trim($parts[1]);
+				$parts = explode( '=', urldecode( $uri_parameters[$current_param] ), 2 );
+				if ( isset( $parts[1] ) ) {
+					$_REQUEST[ trim( $parts[0] ) ] = trim( $parts[1] );
 				} else {
-					$_REQUEST[trim($parts[0])] = null;
+					$_REQUEST[ trim( $parts[0] ) ] = null;
 				}
 				$current_param += 1;
 			}
 		}
 
 		// If still no module or request then use defaults from session (which are initially landing defaults)
-		if(!isset($module) || $module == '') {
-			$module = $_SESSION['module'];
-		}
-		if(!isset($request) || $request == '') {
+		if( !isset($module) || $module == '' ) {
+			$module  = $_SESSION['module'];
 			$request = $_SESSION['request'];
+		}
+		if( !isset($request) ) {
+			$request = '';
 		}
 
 		// Tell identity of the module to form link back URLs based on
@@ -329,12 +335,34 @@ class Framework {
 		
 		// Set Module and Request Related Properties
 		$this->module_name     = $module;  // module name 
-		$this->request_name    = $request;     // request name
+		$this->request_name    = $request; // request name
 	} // End of determineRequestDetails() 
+
+	private function isReservedModule( $module_name ) {
+		switch( strtolower( $module_name ) ) {
+			case 'resources':
+			case 'robots.txt':
+			case 'favicon.ico':
+				return true;
+				break;
+			default: 
+				return false;
+		}
+	}
+
+	private function isSpecialFile( $file_name ) {
+		switch( strtolower( $file_name ) ) {
+			case 'robots.txt':
+			case 'favicon.ico':
+				return true;
+				break;
+			default: 
+				return false;
+		}
+	}
 
 	// *** Execute the Module's Appropriate Controller then Format Response and Return to Requestor 
 	public function serviceRequest( $module_name = null, $request_name = null, $parameters = null ) { 
-
 		// Is this the main request (true) or a sub-request (false)
 		if( $module_name === null && $request_name === null && $parameters === null ) { $is_main_request = true; }
 		else { $is_main_request = false; }
@@ -346,10 +374,22 @@ class Framework {
 
 		//print "DEBUG:\nModule: $module_name; Request: $request_name; Parameters:"; var_dump($parameters); exit; 
 
+		// If robots.txt or favicon.ico as the module or the request, setup to get it as a resource..
+		if( $this->isSpecialFile( $module_name ) ) {
+			$file_name    = $module_name;
+			$module_name  = 'resources';
+		} 
+		elseif( $this->isSpecialFile( $request_name ) ) {
+			$file_name   = $request_name;
+			$module_name = 'resources';
+		}
+
 		// The 'resources' module is built-in to the framework for getting resource files (css, javascript, images, etc)
 		if( $module_name == 'resources' ) {
 			$request_name = strtolower( $request_name );
-			$file_name = trim( strtolower( substr( $this->identity->request_path, strlen( "resources/{$request_name}" ) ) ), '/' );
+			if( !isset( $file_name ) ) {
+				$file_name = trim( strtolower( substr( $this->identity->request_path, strlen( "resources/{$request_name}" ) ) ), '/' );
+			}
 			return $this->getResourceFile( $file_name, $request_name );
 		}
 
@@ -365,6 +405,9 @@ class Framework {
 			$request_is_fatal_reason .= "There is no registration file for the \"$module_name\" module (\"~/application_{$this->identity->version}/modules/$registration_file_name\"). "; 
 		}
 
+		// If no request given, try and see if the module has a default request defined..
+		if( $request_name == '' && isset( $registration['default'] ) ) { $request_name = $registration['default']; }
+
 		$sanitized_parameters  = array();  // array to collect sanitized request parameters provided and/or their registered defaults
 		$missing_parameters    = '';       // place to collect warnings on missing required request parameters (if any)
 
@@ -374,10 +417,10 @@ class Framework {
 			$request_is_fatal_reason .= "The \"$request_name\" request is not registered under the \"$module_name\" module.";
 		}
 		else {
-			// Does the registration file look corrupted?
-			if( !isset( $registration['requests'][$request_name]['parameters'] ) || !is_array( $registration['requests'][$request_name]['parameters'] ) ) {
-				$request_is_fatal = true;
-				$request_is_fatal_reason .= "The \"$module_name\"'s \"$request_name\" request has malformed parameter registrations.";
+		// Does the registration file look corrupted?
+		if( !isset( $registration['requests'][$request_name]['parameters'] ) || !is_array( $registration['requests'][$request_name]['parameters'] ) ) {
+			$request_is_fatal = true;
+			$request_is_fatal_reason .= "The \"$module_name\"'s \"$request_name\" request has malformed parameter registrations.";
 			}
 			else {
 				// Collect request parameters according to the registration
@@ -396,8 +439,8 @@ class Framework {
 						}
 					}
 				}
-			}
-		}
+			} // request parameters array exists, even if none are in there
+		} // request_name is registered
 
 		// if the "fresh" parameter wasn't provided, add it and assign it as boolean true (for controller/view to know user just arrived here)
 		if( !isset( $_REQUEST['fresh'] ) ) { $sanitized_parameters['fresh'] = true; }
@@ -448,19 +491,27 @@ class Framework {
 		}
 		else {
 			// *** If a Good Request, Return the Following.. ***
-			$response = $controller->$request_method_name( $sanitized_parameters, $missing_parameters ); 
+			
+			$return = $controller->$request_method_name( $sanitized_parameters, $missing_parameters ); 
 
 			// If the response wasn't an array then presume it is an HTML string (for backward compatibility)
-			if( !is_array( $response ) ) {
-				$format = array( 'format' => 'direct-html' );
+			if( !is_array( $return ) ) {
+				$response = $return;
+				$format   = array( 'format' => 'direct-html' );
 			}
 			else {
-				list( $response, $format ) = $response;
+				list( $response, $format ) = $return;
 			}
 		}
 
-		// If this is a sub-request, just return the raw response array
-		if( !$is_main_request ) { return $response; };
+		// If this is a sub-request, just return the raw response array 
+		if( !$is_main_request ) {
+			$return[1]['module'] = $module_name;  // need to know the sub-request module name, in case the main request module is different
+			return $return; 
+		};
+
+		// Get sub-request's module name (or otherwise specified)
+		if( isset( $format['module'] ) ) { $module_name = $format['module']; }
 
 		// If response format is not specified, default according to the request protocol
 		if( !isset( $format['format'] ) ) {
@@ -645,8 +696,14 @@ class Framework {
 	}
 
 	public function populateModuleTemplate( $module_name, $template, $fields ) {
-		$fields['@link']     = $this->identity->getLinkBackUrl();
-		$fields['@resource'] = $this->identity->getResourcesUrl();
+		// Automatically included fields
+		$fields['@link']        = $this->identity->getLinkBackUrl( null, $module_name );  // Link Back URL (ends with "/")
+		$fields['@resource']    = $this->identity->getResourcesUrl( null, $module_name ); // Link to module resources (ends with "/")
+		$fields['@application'] = $this->identity->application;
+		$fields['@version']     = $this->identity->version;
+		$fields['@environment'] = $this->identity->environment;
+
+		// Ability to suck up and populate sub-templates (recursively)
 		$sub_templates = array();  // mapping of {{label}} to file name from {{label:file_name}} patterns
 		preg_match_all('/{{([^}]+)}}/', $template, $references);
 		foreach( $references[1] as $reference ) {
@@ -656,6 +713,8 @@ class Framework {
 				$template = str_replace( '{{' . $reference . '}}', '{{' . $key . '}}', $template );
 			}
 		}
+
+		// Populate template fields..
 		$searches = array();
 		$replacements = array();
 		foreach( $fields as $field => $value ) {
@@ -695,7 +754,7 @@ class Framework {
 			return file_get_contents( $module_template_path );
 		}
 		// TODO: log and do something nicer when template is missing..
-		return "Problem: $module_name's \"$template_name\" file is missing.  ";
+		return "(Problem: $module_name's \"$template_name\" file is missing.)";
 	}
 
 	// Extract Controller's Views From Files Into Associative Array
@@ -805,8 +864,8 @@ class Framework {
 	public function logMessage($argMessage, $argNature = NOTICE) {
 		# Get date/time
 		$when = date('[Y-m-d H:i:s T]');
-		if (isset($_SESSION['user'])) {
-			$user = $_SESSION['user'];
+		if ( isset( $_SESSION['user_name'] ) ) {
+			$user = $_SESSION['user_name'];
 		} else {
 			$user = 'unspecified';
 		}
@@ -1161,6 +1220,9 @@ EndOfSQL;
 		// Set headers for resource mime types (by file extension)
 		switch( $resource_type ) {
 			// Images 
+			case 'ico':
+				header('Content-Type: image/x-icon;');
+				break;
 			case 'jpg':
 			case 'jpe':
 			case 'jpeg':

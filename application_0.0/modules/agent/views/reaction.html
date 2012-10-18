@@ -1,4 +1,4 @@
-		<form method="post" action="{{@link}}save_reaction">
+		<form method="post" action="{{@link}}/save_reaction">
 			<input type="hidden" name="meaning_id" value="{{meaning_id}}"/>
 			<input type="hidden" name="reaction_id" value="{{reaction_id}}"/>
 			<table class="reaction_definition">
@@ -18,15 +18,21 @@
 					</td>
 				</tr>
 				<tr>
-					<td colspan="3"><textarea id="conditions_{{meaning_id}}_{{reactiond_id}}" name="conditions" class="reaction_conditions modifiable">{{conditions}}</textarea></td>
+					<td colspan="3">
+						<b>Conditions</b><br/>
+						<textarea id="conditions_{{meaning_id}}_{{reactiond_id}}" name="conditions" class="reaction_conditions modifiable">{{conditions}}</textarea>
+					</td>
 				</tr>
 				<tr>
-					<td colspan="3"><textarea id="actions_{{meaning_id}}_{{reactiond_id}}" name="actions" class="reaction_actions modifiable">{{actions}}</textarea></td>
+					<td colspan="3">
+						<b>Action Sequence</b><br/>
+						<textarea id="actions_{{meaning_id}}_{{reactiond_id}}" name="actions" class="reaction_actions modifiable">{{actions}}</textarea>
+					</td>
 				</tr>
 				<tr>
 					<td><input type="reset"  id="reset_{{meaning_id}}_{{reaction_id}}" value="Reset"/></td>
 					<td align="center"><span id="dirty_status" class="">(not modified)</td>
-					<td align="right"><input type="submit" id="{{@link}}save_{{meaning_id}}_{{reaction_id}}"  value="Save"/></td>
+					<td align="right"><input type="submit" id="{{@link}}/save_{{meaning_id}}_{{reaction_id}}"  value="Save"/></td>
 				</tr>
 			</table>
 		</form>

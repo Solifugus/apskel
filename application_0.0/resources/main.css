@@ -101,3 +101,7 @@ body {
 	background-color: #85b1de;
 }
 
+/* jQuery Theme Overrides */
+.ui-widget { font-family: Trebuchet MS, Tahoma, Verdana,
+ Arial, sans-serif; font-size: 12px; }
+

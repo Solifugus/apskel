@@ -1,0 +1,33 @@
+<link rel="stylesheet" href="{{@resource}}/main.css" type="text/css" media="screen"/>
+<script type="text/javascript" src="{{@resource}}/initialize.js"></script>
+<div id="initialize_view" class="view_wrapper">
+	{{=application_header.html}}
+	<form id="user_initialize_form" method="post" action="{{@link}}/initialize">
+		{{=message_area.html}}
+		<hr/>
+		<b>ATTENTION:</b> Understand that initializing the user registry will wipe out any and all existing users.
+		After successfully initializing the user registry, a super user will be created (as specified below).   
+		The new super user will be the only user until others are registered.<br/>
+		<hr/>
+		<b>Create a Super User</b><br/>
+		<br/>
+		<label class="label"  for="super_user">Super User:</label>	   <input name="super_user"           id="super_user"           class="input" value="{{super_user}}"/><br/>
+		<label class="label"  for="super_password_once">Password:</label>  <input name="super_password_once"  id="super_password_once"  class="input" type="password" /><br/>
+		<label class="label"  for="super_password_twice">Password:</label> <input name="super_password_twice" id="super_password_twice" class="input" type="password" /><br/>
+		<input name="super_password" id="super_password" type="hidden" value="" />
+		<label class="label"  for="super_email">Email:</label>             <input name="super_email"          id="super_email"          class="input" value="{{super_email}}" /><br/>
+		<label class="label"  for="super_surname">Surname:</label>         <input name="super_surname"        id="super_surname"        class="input" value="{{super_surname}}" /><br/>
+		<label class="label"  for="super_forename">Forename:</label>       <input name="super_forename"       id="super_forename"       class="input" value="{{super_forename}}"/><br/>
+		<hr/>
+		<b>Database User</b><br/>
+		<br/>
+		The credentials supplied hereunder must have privileges to create/drop tables in the staging environment.  If not supplied, the database credentials for the staging environment will be attempted.<br/>
+		<br/>
+		<label class="label"  for="database_user">User:</label>          <input name="database_user"     id="database_user"     class="input" value="{{database_user}}"/><br/>
+		<label class="label"  for="database_password">Password:</label>  <input name="database_password" id="database_password" class="input" type="password" /><br/>
+		<br/>				
+		<input type="hidden" name="fresh" id="fresh" value="false"/>
+		<input class="button" id="initialize_submit" type="button" value="Initialize" onClick="submitFormIfReady();"/>
+	</form>
+	{{=application_footer.html}}
+</div>

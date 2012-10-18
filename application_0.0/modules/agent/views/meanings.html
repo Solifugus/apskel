@@ -1,9 +1,11 @@
-<link rel="stylesheet" href="{{@resource}}jquery-ui/css/ui-lightness/jquery-ui-1.8.24.custom.css" type="text/css" media="screen"/>	
-<script type="text/javascript" src="{{@resource}}jquery-ui/js/jquery-1.8.2.min.js"></script>
-<script type="text/javascript" src="{{@resource}}jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
-<link rel="stylesheet" href="{{@resource}}main.css" type="text/css" media="screen"/>	
-<script type="text/javascript" src="{{@resource}}meanings.js"></script>
+<!-- Custom jQuery UI css builder: http://jqueryui.com/themeroller/ -->
+<link rel="stylesheet" href="{{@resource}}/jquery-ui.css" type="text/css" media="screen"/>
+<script type="text/javascript" src="{{@resource}}/jquery-ui/js/jquery-1.8.2.min.js"></script>
+<script type="text/javascript" src="{{@resource}}/jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
+<link rel="stylesheet" href="{{@resource}}/main.css" type="text/css" media="screen"/>	
+<script type="text/javascript" src="{{@resource}}/meanings.js"></script>
 <div id="agent_editor_wrapper" class="view_wrapper">
+	{{=application_header.html}}
 	<span id="editor_title" class="major_title">Brain Editor</span>
 	<span id="editor_title" class="minor_title">-- Meanings Directory --</span><br/>
 	<br/>
@@ -11,7 +13,16 @@
 	<hr/>
 	<div id="meaning_directory" class="">
 		<table class="meaning_definitions">
-			<tr><th class="left">Recognizer</td><th align="center">Paradigm</td></tr>
+			<tr>
+				<th class="left">
+					Recognizer
+					<img id="recognizer_help_icon" src="{{@resource}}/help.png"/>
+				</th>
+				<th align="center">
+					Paradigm
+					<img id="paradigm_help_icon" src="{{@resource}}/help.png"/>
+				</th>
+			</tr>
 {{meanings:meaning.html}}
 		</table>
 	</div>
@@ -22,7 +33,7 @@
 		<input type="button" class="button" id="save_meanings_button" class="button" value="Save Changes"/>
 	</div>
 	<hr/>
-{{=shared_footer.html}}
+{{=application_footer.html}}
 </div>
 
 <!-- Place to hold results from AJAX calls -->
@@ -31,7 +42,7 @@
 <!-- Dialog to add new meaning -->
 <div id="new_meaning_dialog" class="web_dialog">
 	<br/>
-	<form id="new_meaning_form" method="post" action="{{@link}}save_meaning">
+	<form id="new_meaning_form" method="post" action="{{@link}}/save_meaning">
 		<table class="form_table">
 			<tr><td><label for="Recognizer_new">recognizer:</label></td><td><input type="text" id="recognizer_new" name="recognizer" class="input" value=""/></td></tr>
 			<tr><td><label for="paradigm_new">Paradigm:</label></td>
@@ -44,5 +55,39 @@
 			</td></tr>
 		</table>
 	</form>
+</div>
+
+<!-- Dialog for Recognizer Help -->
+<div id="recognizer_help_dialog" class="web_dialog">
+When the user enters a statement, we must determine what meaning that statement matches.  
+Therefore, every meaning has a "recognizer".  A recognizer is just a text pattern to compare
+with the user's statement.  If it matches then, we can presume that's the meaning.<br/>
+<br/>
+<b>Finding Best Match</b>.  Each user statement is compared against longest to shortest recognizer
+(any wildcards counting as only one character).  First, full case and punctuation is compared;
+Second, caseless punctuation; and third caseless without punctuation.  The first such match found
+identifies the meaning and ceases the search.  If none after all this, the recognizer comprised of 
+only one wildcard is chosen.<br/>
+<br/>
+<b>Wildcards</b>.  Any label within square brackets in a recognizer is considered a wildcard.  That
+is, any text in that place of the user's statement matches there.  Any such text from the user's
+statement is also preserved (as named) for use in the reaction.  For example:<br/>
+<br/>
+[somebody] really likes [something].
+<br/>
+The above recognizer could match "Mike really likes cookies.", whereby [somebody]
+will hold the text "Mike" and [something] will hold the text "cookies".
+</div>
+
+<!-- Dialog for paradigm Help -->
+<div id="paradigm_help_dialog" class="web_dialog">
+Every meaning may have a set of available reactions. The "paradigm" is the method used to choose 
+from among those reactions that are not ruled out by their conditions.  There are three paradigms:<br/>
+<br/>
+<ul>
+	<li><b>natural</b> -- the same as cyclic, except as time wears on, these will slip backwards.</li>
+	<li><b>cyclic</b> -- in order of priority first, list order second.  After all are used, it begins with the first again.</li>
+	<li><b>random</b> -- each time, one is picked randomly.
+</ul>
 </div>
 

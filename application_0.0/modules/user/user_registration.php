@@ -46,6 +46,12 @@ $requests = array(
 				array( 'name' => 'password',  'required' => true, 'default' => null,    'description' => "User's login password." )
 			)
 		),
+		'logout'    => array(
+			'description' => 'The "logout" request is for signing out the user.',
+			'parameters' => array( 
+				array( 'name' => 'user_name', 'required' => true, 'default' => null,    'description' => "User login name." ),
+			)
+		),
 		'edit'  => array(
 			'description' => 'The "Edit" request is for retrieval and/or updating (when fresh != true) of user attributes. When updating, only provided fields are updated--others are left as was.',
 			'parameters' => array( 

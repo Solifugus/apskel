@@ -1,0 +1,14 @@
+<link rel="stylesheet" href="{{@resource}}/main.css" type="text/css" media="screen"/>	
+<div id="login_view_wrapper" class="view_wrapper">
+	{{=application_header.html}}
+	<span id="minor_title">Sign In</span><br/><hr/>
+	{{=message_area.html}}
+	<br/>
+	<form method="post" action="{{@link}}/login">
+		<label for="user_name" class="label">User Name: </label> <input name="user_name" id="user_name" class="input" value="{{user_name}}"/><br/>
+		<label for="password"  class="label">Password: </label> <input name="password" id="password" class="input" type="password" /><br/>
+		<input id="sign_in"    class="button" type="submit" value="Sign In"/><br/>
+	</form>
+	<a href="{{@link}}/register">Register</a>
+	{{=application_footer.html}}
+</div>
