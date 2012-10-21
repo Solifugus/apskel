@@ -1,0 +1,26 @@
+
+ ~// INTRODUCTIONS
+ ~meaning0/recognizer: Hello
+ ~meaning0/recognizer: Hi
+ ~meaning0/recognizer: How are you?
+ ~meaning0/recognizer: Let's talk about [topic].
+
+ ~// IS/ARE Relations
+ ~meaning0/recognizer: [subject] is [object].
+ ~meaning0/recognizer: It is [object].
+ ~meaning0/recognizer: [subject]s are [object].
+ ~meaning0/recognizer: They are [object].
+ ~meaning0/recognizer: Is [subject] [object]?
+ ~meaning0/recognizer: Are [subject]s [object]?
+ ~meaning0/recognizer: What is [something]?
+
+ ~// CAN & HOW CAN Relations
+ ~meaning0/recognizer: [something] can [capability].
+ ~meaning0/recognizer: [something] can [capability] by [method].
+ ~meaning0/recognizer: [something]s can [capability].
+ ~meaning0/recognizer: [something]s can [capability] by [method].
+ ~meaning0/recognizer: Can [something] [capability]?
+ ~meaning0/recognizer: Can [something]s [capability]?
+ ~meaning0/recognizer: How can [something] [capability]?
+ ~meaning0/recognizer: How can [something]s [capability]?
+

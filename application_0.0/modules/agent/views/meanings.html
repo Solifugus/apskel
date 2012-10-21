@@ -19,6 +19,10 @@
 					<img id="recognizer_help_icon" src="{{@resource}}/help.png"/>
 				</th>
 				<th align="center">
+					Comparison	
+					<img id="comparison_help_icon" src="{{@resource}}/help.png"/>
+				</th>
+				<th align="center">
 					Paradigm
 					<img id="paradigm_help_icon" src="{{@resource}}/help.png"/>
 				</th>
@@ -45,12 +49,19 @@
 	<form id="new_meaning_form" method="post" action="{{@link}}/save_meaning">
 		<table class="form_table">
 			<tr><td><label for="Recognizer_new">recognizer:</label></td><td><input type="text" id="recognizer_new" name="recognizer" class="input" value=""/></td></tr>
+			<tr><td><label for="comparison_new">Comparison:</label></td>
+			<td>
+			<select id="comparison_new" name="comparison">
+				<option>Full</option>
+				<option>Partial</option>
+			</select>
+			</td></tr>
 			<tr><td><label for="paradigm_new">Paradigm:</label></td>
 			<td>
 			<select id="paradigm_new" name="paradigm">
-				<option>natural</option>
-				<option>cyclic</option>
-				<option>random</option>
+				<option>Natural</option>
+				<option>Cyclic</option>
+				<option>Random</option>
 			</select>
 			</td></tr>
 		</table>
@@ -79,15 +90,27 @@ The above recognizer could match "Mike really likes cookies.", whereby [somebody
 will hold the text "Mike" and [something] will hold the text "cookies".
 </div>
 
-<!-- Dialog for paradigm Help -->
+<!-- Dialog for Comparison Help -->
+<div id="comparison_help_dialog" class="web_dialog">
+To determine the closest meaning of a given user statement, a recognizer may be designed to match the
+full user statement or just be found within it.  According to the rules of precedents, all Full 
+comparisons will be tried first... If no match found, then Partial matches will be saught.
+<br/>
+<ul>
+	<li><b>Full</b> -- The recognizer must match the user statement from beginning to end.</li>
+	<li><b>Partial</b> -- The recognizer only need be found somewhere within the user statement.</li>
+</ul>
+</div>
+
+<!-- Dialog for Paradigm Help -->
 <div id="paradigm_help_dialog" class="web_dialog">
 Every meaning may have a set of available reactions. The "paradigm" is the method used to choose 
 from among those reactions that are not ruled out by their conditions.  There are three paradigms:<br/>
 <br/>
 <ul>
-	<li><b>natural</b> -- the same as cyclic, except as time wears on, these will slip backwards.</li>
-	<li><b>cyclic</b> -- in order of priority first, list order second.  After all are used, it begins with the first again.</li>
-	<li><b>random</b> -- each time, one is picked randomly.
+	<li><b>Natural</b> -- the same as cyclic, except as time wears on, these will slip backwards.</li>
+	<li><b>Cyclic</b> -- in order of priority first, list order second.  After all are used, it begins with the first again.</li>
+	<li><b>Random</b> -- each time, one is picked randomly.</li>
 </ul>
 </div>
 

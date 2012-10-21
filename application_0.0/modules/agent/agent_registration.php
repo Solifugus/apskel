@@ -14,11 +14,11 @@ $requests = array(
 		'converse' => array(
 			'description' => 'This receives a user statement and returns a consequential response (statement and/or metadata).  Note that no response is one kind of valid response.',
 			'parameters' => array(
-				array( 'name' => 'statement', 'required' => true ,  'default' => '',     'description' => 'The user statement.  This should consist of a string of visible text characters.' ),
-				array( 'name' => 'return',    'required' => false , 'default' => 'html', 'description' => 'The return format.  Options include "interface", "xml", "json", or "text".' ),
-				array( 'name' => 'editable',  'required' => false , 'default' => true,   'description' => 'If return_as=html, should it provide editing features?' ),
-				array( 'name' => 'topic',     'required' => false , 'default' => '',     'description' => 'The topic to converse on.' ),
-				array( 'name' => 'passcode',  'required' => false , 'default' => '',     'description' => 'The passcode, required only if this is a private/secured topic.' ),
+				array( 'name' => 'statement', 'required' => true ,  'default' => '',                      'description' => 'The user statement.  This should consist of a string of visible text characters.' ),
+				array( 'name' => 'return',    'required' => false , 'default' => 'html',                  'description' => 'The return format.  Options include "interface", "xml", "json", or "text".' ),
+				array( 'name' => 'editable',  'required' => false , 'default' => true,                    'description' => 'If return_as=html, should it provide editing features?' ),
+				array( 'name' => 'topic',     'required' => false , 'default' => 'Nothing In Particular', 'description' => 'The topic to converse on.' ),
+				array( 'name' => 'passcode',  'required' => false , 'default' => '',                      'description' => 'The passcode, required only if this is a private/secured topic.' ),
 			)
 		),
 		'meanings' => array(
@@ -31,6 +31,7 @@ $requests = array(
 			'parameters' => array(
 				array( 'name' => 'meaning_id', 'required' => false , 'default' => '', 'description' => 'The unique ID for the meaning to save (not needed, if a new meaning).' ),
 				array( 'name' => 'recognizer', 'required' => false , 'default' => '', 'description' => 'The Meaning\'s recognizer (can substitute for meaning_id).' ),
+				array( 'name' => 'comparison', 'required' => false , 'default' => '', 'description' => 'The meaning\'s comparison scope (Full or Partial).' ),
 				array( 'name' => 'paradigm',   'required' => false , 'default' => '', 'description' => 'The meaning\'s paradigm for how valid reactions are selected (natural, cyclic, or random)' ),
 			)
 		),
@@ -85,22 +86,30 @@ $requests = array(
 );
 
 $tables = array(
+	'agent_personalities' => array(
+		'id'          => array ( 'type' => 'INT(11)',       'key' => 'primary' ),
+		'name'        => array ( 'type' => 'VARCHAR(15)',   'default' => null,  'filter' => null, 'description' => 'The name, as in a person\'s name, of the personality.' ),
+		'description' => array ( 'type' => 'VARCHAR(400)',  'default' => '',    'filter' => null, 'description' => 'Textual description of the personality.' ),
+		'user_id'     => array ( 'type' => 'INT(11)',       'default' => null,  'filter' => null, 'description' => 'Identifis the user who owns this personality--or anonymous (shared) by default.' ),
+	),
 	'agent_topics' => array(
 		'id'          => array ( 'type' => 'INT(11)',       'key' => 'primary' ),
-		'title'       => array ( 'type' => 'VARCHAR(15)',   'default' => null,    'filter' => null, 'description' => 'URL-compatible label for the topic.' ),
+		'title'       => array ( 'type' => 'VARCHAR(30)',   'default' => null,    'filter' => null, 'description' => 'URL-compatible label for the topic.' ),
 		'description' => array ( 'type' => 'VARCHAR(4000)', 'default' => '',      'filter' => null, 'description' => 'Free-hand textual description for the topic.' ),
 		'actions'     => array ( 'type' => 'TEXT',          'default' => '',      'filter' => null, 'description' => 'The actions required to topic (ideally, list of "remember" statements ending with an "interpret as" statement.' ),
 	),
 	'agent_meanings' => array(
-		'id'         => array ( 'type' => 'INT(11)',      'key' => 'primary' ),
-		'recognizer' => array ( 'type' => 'VARCHAR(200)', 'default' => null,    'filter' => null ),
-		'length'     => array ( 'type' => 'INT(11)',      'default' => null,    'filter' => null, 'description' => 'Common name of the skill in reference.' ),
-		'paradigm'   => array ( 'type' => 'CHAR(1)',      'default' => 'N',     'filter' => null, 'description' => 'Method used to select concurrently valid reactions: (N)atural, (C)yclic, or (R)andom.' ),
+		'id'          => array ( 'type' => 'INT(11)',      'key' => 'primary' ),
+		'personality' => array ( 'type' => 'INT(11)',      'default' => null, 'filter' => null, 'description' => 'Attributes this meaning (and thus all underlying reactions) uniquely to the referenced "personality".' ),
+		'recognizer'  => array ( 'type' => 'VARCHAR(200)', 'default' => null, 'filter' => null, 'description' => 'Text pattern that, if matched to user statement, identifies the user\'s meaning.' ),
+		'comparison'  => array ( 'type' => 'CHAR(1)',      'default' => 'F',  'filter' => null, 'description' => 'How should the recognizer be compared to the user statement?  (F)ully or (P)artially.' ),
+		'length'      => array ( 'type' => 'INT(11)',      'default' => null, 'filter' => null, 'description' => 'Common name of the skill in reference.' ),
+		'paradigm'    => array ( 'type' => 'CHAR(1)',      'default' => 'N',  'filter' => null, 'description' => 'Method used to select concurrently valid reactions: (N)atural, (C)yclic, or (R)andom.' ),
 	),
 	'agent_reactions' => array(
 		'id'         => array ( 'type' => 'INT(11)',                 'key' => 'primary' ),
 		'meaning_id' => array ( 'type' => 'INT(11)',                 'default' => null, 'filter' => null, 'description' => 'The meaning under which this reaction applies.' ),
-		'topic'      => array ( 'type' => 'VARCHAR(15)',             'default' => '',   'filter' => null, 'description' => 'If specified, a topic to restrict the reaction to.' ),
+		'topic'      => array ( 'type' => 'VARCHAR(30)',             'default' => '',   'filter' => null, 'description' => 'If specified, a topic to restrict the reaction to.' ),
 		'priority'   => array ( 'type' => 'TINYINT',                 'default' => 0,    'filter' => null, 'description' => 'Order to use, given a non-false condition.' ),
 		'functional' => array ( 'type' => 'ENUM(\'T\',\'F\',\'U\')', 'default' => 'U',  'filter' => null, 'description' => 'Is this reaction functional (tested and no errors found)--(T)rue, (F)alse, or (U)nknown?' ),
 		'conditions' => array ( 'type' => 'TEXT',                    'default' => '',   'filter' => null, 'description' => 'Textual condition coding to determine if this reaction is currently applicable.' ),

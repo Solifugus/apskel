@@ -3,11 +3,18 @@
 			<a id="meaning_{{id}}" href="{{@link}}/reactions?meaning_id={{id}}" target="_blank">{{recognizer}}</a>
 		</td>
 		<td align="center">
+			<select id="comparison_{{id}}" name="comparison_{{id}}">
+				<option>{{comparison}}</option>
+				<option>Full</option>
+				<option>Partial</option>
+			</select>
+		</td>
+		<td align="center">
 			<select id="paradigm_{{id}}" name="paradigm_{{id}}">
 				<option>{{paradigm}}</option>
-				<option>natural</option>
-				<option>cyclic</option>
-				<option>random</option>
+				<option>Natural</option>
+				<option>Cyclic</option>
+				<option>Random</option>
 			</select>
 		</td>
 	</tr>

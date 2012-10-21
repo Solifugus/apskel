@@ -19,7 +19,8 @@ class AgentModels extends Models {
 		$this->framework = $param_framework;
 
 		// Register Paradigm Mappings (database uses 1 charachter while user should see whole word)
-		$this->paradigm_mappings   = array( 'natural'  => 'N', 'cyclic' => 'C', 'random' => 'R' );
+		$this->paradigm_mappings   = array( 'Natural'  => 'N', 'Cyclic' => 'C', 'Random' => 'R' );
+		$this->comparison_mappings = array( 'Full'  => 'F', 'Partial' => 'P' );
 		$this->functional_mappings = array( 'untested' => 'U', 'false'  => 'F', 'true'   => 'T' );
 		$this->inversions          = array (
 			'I'     => 'you',
@@ -198,6 +199,9 @@ class AgentModels extends Models {
 				if( isset( $meaning['paradigm'] ) ) { $fields['paradigm'] = $this->framework->mapToValue( $meaning['paradigm'], $this->paradigm_mappings, 'N' ); }
 				else { $fields['paradigm'] = "N"; }
 				$fields['paradigm'] =  "'{$fields['paradigm']}'";
+				if( isset( $meaning['comparison'] ) ) { $fields['comparison'] = $this->framework->mapToValue( $meaning['comparison'], $this->paradigm_mappings, 'F' ); }
+				else { $fields['comparison'] = "F"; }
+				$fields['comparison'] =  "'{$fields['comparison']}'";
 				$sql = $this->buildInsertSql( 'agent_meanings', $fields );
 				$affected = $this->framework->runSql($sql);
 				if($affected == 0) {
@@ -239,12 +243,14 @@ class AgentModels extends Models {
 	public function exportXml( $meanings = null ) {
 		$xml = '<' .'?xml version="1.0" encoding="UTF-8"?' . '>' . "\n";
 		$xml .= "<agent name=\"anyone\">\n";  // TODO: enable multiple agents.. probably each with own tables
-		$sql = "SELECT * FROM agent_meanings ORDER BY length DESC";
+		$sql = "SELECT * FROM agent_meanings ORDER BY recognizer";
 		$meanings = $this->framework->runSql( $sql );
 		foreach( $meanings as $meaning ) {
-			if( isset( $meaning['paradigm'] ) ) { $paradigm = $this->framework->mapToKey( $meaning['paradigm'], $this->paradigm_mappings, 'natural' ); }
-			else { $paradigm = "natural"; }
-			$xml .= "\t<meaning recognizer=\"{$meaning['recognizer']}\" paradigm=\"{$paradigm}\">\n";
+			if( isset( $meaning['paradigm'] ) ) { $paradigm = $this->framework->mapToKey( $meaning['paradigm'], $this->paradigm_mappings, 'Natural' ); }
+			else { $paradigm = "Natural"; }
+			if( isset( $meaning['comparison'] ) ) { $comparison = $this->framework->mapToKey( $meaning['comparison'], $this->comparison_mappings, 'Full' ); }
+			else { $comparison = "Full"; }
+			$xml .= "\t<meaning recognizer=\"{$meaning['recognizer']}\" comparison=\"{$comparison}\" paradigm=\"{$paradigm}\">\n";
 			$sql = "SELECT * FROM agent_reactions WHERE meaning_id = {$meaning['id']}";
 			$reactions = $this->framework->runSql( $sql );
 			foreach( $reactions as $reaction ) {
@@ -285,6 +291,7 @@ class AgentModels extends Models {
 		if( !isset( $fields['paradigm'] ) ) {  $fields['paradigm'] = ''; }
 		$fields['paradigm']   = $this->framework->mapToValue( $fields['paradigm'], $this->paradigm_mappings, 'N' );
 		$fields['recognizer'] = "'" . $fields['recognizer'] . "'"; 
+		$fields['comparison'] = "'" . $fields['comparison'] . "'";
 		$fields['paradigm']   = "'" . $fields['paradigm'] . "'";
 		if( isset( $fields['meaning_id'] ) && $fields['meaning_id'] > 0 ) { 
 			if( is_numeric( $fields['meaning_id'] ) ) {
@@ -396,12 +403,13 @@ class AgentModels extends Models {
 	public function getAllMeanings( $alphabetic = true ) {
 		if( $alphabetic ) { $order = 'recognizer'; }
 		else              { $order = 'length DESC'; }
-		$sql = "SELECT id, recognizer, paradigm FROM agent_meanings ORDER BY {$order}";
+		$sql = "SELECT id, recognizer, comparison, paradigm FROM agent_meanings ORDER BY {$order}";
 		$results = $this->framework->runSql( $sql );
 		$meanings = array();
 		foreach( $results as $result ) {
-			$paradigm = $this->framework->mapToKey( $result['paradigm'], $this->paradigm_mappings, 'natural' );
-			$meanings[] = array( 'id' => $result['id'], 'recognizer' => $result['recognizer'], 'paradigm' => $paradigm );
+			$paradigm   = $this->framework->mapToKey( $result['paradigm'],   $this->paradigm_mappings, 'Natural' );
+			$comparison = $this->framework->mapToKey( $result['comparison'], $this->comparison_mappings, 'Full' );
+			$meanings[] = array( 'id' => $result['id'], 'recognizer' => $result['recognizer'], 'comparison' => $comparison, 'paradigm' => $paradigm );
 		}
 		return $meanings;
 	}
@@ -459,107 +467,71 @@ class AgentModels extends Models {
 		}
 
 		// Collect all possible matching meaning recognizers then start comparing for best match
-		$statement_length = strlen( $statement ); 
-		//$sql = "SELECT id AS id, recognizer, paradigm FROM agent_meanings WHERE length <= {$statement_length} ORDER BY length desc";
-		$sql = "SELECT id AS id, recognizer, paradigm FROM agent_meanings WHERE length > 1 ORDER BY length desc";
+		$sql = "SELECT id AS id, recognizer, paradigm FROM agent_meanings WHERE length > 1 AND comparison = 'F' ORDER BY length desc";
 		$meanings = $this->framework->runSql( $sql );
 
-		$matched = false;
-		$notes = "Seeking the meaning of: $statement\n";
+		// Start by trying to match Full recognizers..
+		$search = array( 'found' => false, 'meaning_id' => null, 'paradigm' => null, 'wildcards' => array() );
+		if( !$search['found'] ) { $search = $this->isRecognized( $statement, $meanings, array( 'caseful', 'punctuated' ) ); }
+		if( !$search['found'] ) { $search = $this->isRecognized( $statement, $meanings, array( 'caseful' ) ); }
+		if( !$search['found'] ) { $search = $this->isRecognized( $statement, $meanings, array( 'punctuated' ) ); }
+		if( !$search['found'] ) { $search = $this->isRecognized( $statement, $meanings, array( ) ); }
 
+		// Convert aka terms/symbols to common ones (e.g. ' percent ' to '%', ' dollars ' to '$', etc)
+		// TODO..
+
+		// If still no match, try running anything in parenthesis separately from rest of statement
+		// TODO 
+
+		// If still no match, try matching Partial recognizers.. 
+		$sql = "SELECT id AS id, recognizer, paradigm FROM agent_meanings WHERE length > 1 AND comparison = 'P' ORDER BY length desc";
+		$meanings = $this->framework->runSql( $sql );
+		if( !$search['found'] ) { $search = $this->isRecognized( $statement, $meanings, array( 'partial', 'caseful', 'punctuated' ) ); }
+		if( !$search['found'] ) { $search = $this->isRecognized( $statement, $meanings, array( 'partial', 'caseful' ) ); }
+		if( !$search['found'] ) { $search = $this->isRecognized( $statement, $meanings, array( 'partial', 'punctuated' ) ); }
+		if( !$search['found'] ) { $search = $this->isRecognized( $statement, $meanings, array( 'partial' ) ); }
+
+		// If still no match, try matching to a catch-all recognizer..
+		if( !$search['found'] ) {
+			$sql      = "SELECT id AS id, recognizer, paradigm FROM agent_meanings WHERE length = 1 AND recognizer like '[%]'";
+			$meanings = $this->framework->runSql( $sql );
+			$search   = $this->isRecognized( $statement, $meanings, array() ); 
+		}
+
+		// Matched or not, return the result..
+		if( $search['found'] ) { return $search; }
+		else { return null; }
+	}
+
+	// Checks for match between user statement and provided meaning recognizers
+	private function isRecognized( $statement, $meanings, $how = array() ) {
 		// Full punctuation and case match?
+		$matched = false;
+		$meaning_id = null;
+		$paradigm   = null;
+
 		foreach( $meanings as $meaning ) {
 			$recognizer = $meaning['recognizer'];
-			list( $matched, $wildcards ) = $this->compareStatementToRecognizer( $statement, $recognizer );
+			if( !in_array( 'caseful', $how ) ) {
+				$statement  = strtolower( $statement );
+				$recognizer = strtolower( $recognizer );
+			}
+			if( !in_array( 'punctuated', $how ) ) {
+				$punctuation = array( '!', '.', '?',',' );
+				$statement  = str_replace( $punctuation, '', $statement );
+				$recognizer = str_replace( $punctuation, '', $recognizer );
+			}
+			if( !in_array( 'partial', $how ) ) { $partial = false; }
+			else { $partial = true; }
+
+			list( $matched, $wildcards ) = $this->compareStatementToRecognizer( $statement, $recognizer, $partial );
 			if( $matched ) {
 				$meaning_id = $meaning['id'];
 				$paradigm   = $meaning['paradigm'];
 				break;
 			}
 		}
-		if( !$matched ) {
-			$notes .= "Full punctuation and caseful match: not found.\n";
-		}
-
-		// Convert aka terms/symbols to common ones (e.g. ' percent ' to '%', ' dollars ' to '$', etc)
-		// TODO..
-
-		// Full punctuation caseless match?
-		if( !$matched ) {
-			foreach( $meanings as $meaning ) {
-				$recognizer = $meaning['recognizer'];
-				$modified_statement  = strtolower( $statement );
-				$modified_recognizer = strtolower( $recognizer );
-				list( $matched, $wildcards ) = $this->compareStatementToRecognizer( $modified_statement, $modified_recognizer );
-				if( $matched ) {
-					$meaning_id = $meaning['id'];
-					$paradigm   = $meaning['paradigm'];
-					break;
-				}
-			}
-			$notes .= "Full punctuation caseless match: not found.\n";
-		}
-
-		// No punctuation but caseful match?
-		if( !$matched ) {
-			$punctuation = array( '!', '.', '?',',' );
-			$modified_statement  = str_replace( $punctuation, '', $statement );
-			foreach( $meanings as $meaning ) {
-				$recognizer = $meaning['recognizer'];
-				$modified_recognizer = str_replace( $punctuation, '', $recognizer );
-				list( $matched, $wildcards ) = $this->compareStatementToRecognizer( $modified_statement, $modified_recognizer );
-				if( $matched ) {
-					$meaning_id = $meaning['id'];
-					$paradigm   = $meaning['paradigm'];
-					break;
-				}
-			}
-			$notes .= "No punctuation but caseful match: not found.\n";
-		}
-
-		// No punctuation caseless match?
-		if( !$matched ) {
-			foreach( $meanings as $meaning ) {
-				$recognizer = $meaning['recognizer'];
-				$modified_recognizer = str_replace( $punctuation, '', $recognizer );
-				list( $matched, $wildcards ) = $this->compareStatementToRecognizer( strtolower( $modified_statement ), strtolower( $modified_recognizer ) );
-				if( $matched ) {
-					$meaning_id = $meaning['id'];
-					$paradigm   = $meaning['paradigm'];
-					break;
-				}
-			}
-			$notes .= "No punctuation caseless match: not found.\n";
-		}
-
-		// If still no match, try removing anything in parenthesis
-		// TODO: interpret as what's in parenthesis, remove the parenthesis and recurse into this function with that..
-
-		// If no match by any other means, use the catchall (if one exists)--e.g. an "[anything]" recognizer
-		if( !$matched ) {
-			$sql = "SELECT id AS id, recognizer, paradigm FROM agent_meanings WHERE length = 1 AND recognizer like '[%]'";
-			$meanings = $this->framework->runSql( $sql );
-			if( $meanings !== null && count( $meanings ) >0 ) { 
-				$meaning = $meanings[0];
-				$recognizer = $meaning['recognizer'];
-				list( $matched, $wildcards ) = $this->compareStatementToRecognizer( $statement, $recognizer );
-				if( $matched ) {  // Note: non-matches are still possible, where recognizer is only a single character..
-					$meaning_id = $meaning['id'];
-					$paradigm   = $meaning['paradigm'];
-				}
-				else {
-					$notes .= "This didn't even match the catchall.  That shouldn't be possible.\n";
-				}
-			}
-			else { $notes .= "There is no catchall meaning (e.g. \"[anything]\").\n"; }
-		}
-
-		// TODO: Log $notes or something..
-		//print nl2br( $notes );  //-- DEBUG
-
-		// Matched or not, return the result..
-		if( $matched ) { return array( 'meaning_id' => $meaning_id, 'paradigm' => $paradigm, 'wildcards' => $wildcards ); }
-		else { return null; }
+		return array( 'found' => $matched, 'meaning_id' => $meaning_id, 'paradigm' => $paradigm, 'wildcards' => $wildcards );
 	}
 
 	// Returns array of reactions under meaning, as best refinable using SQL
@@ -679,7 +651,7 @@ class AgentModels extends Models {
 	}
 
 	// If statement matches recognizer (converted) then return true and populate 
-	public function compareStatementToRecognizer( $statement, $recognizer ) {
+	public function compareStatementToRecognizer( $statement, $recognizer, $partial = false ) {
 		// TODO: (1) Validate that brackets are matched; (2) Respect escaped brackets in recognizer
 
 		// Convert recognizer to regex and collect wildcard names
@@ -690,7 +662,8 @@ class AgentModels extends Models {
 		preg_match_all( "/\[[^]]*\]/", $recognizer, $wildcard_names );       // gets array of wildcard names
 
 		// Check if matched and, if so, collect wildcard assignments
-		$matched = preg_match('/^' . trim( $regex ) . '$/', trim( $statement ), $variable_matches);
+		if( $partial ) { $matched = preg_match('/'  . trim( $regex ) . '/',  trim( $statement ), $variable_matches ); }
+		else           { $matched = preg_match('/^' . trim( $regex ) . '$/', trim( $statement ), $variable_matches); }
 		$wildcards = array();
 		if($matched) {
 			// collect statement parameters and form into associate array

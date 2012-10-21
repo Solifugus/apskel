@@ -1217,80 +1217,9 @@ EndOfSQL;
 		//print "Environment: [$environment_resource_path]<br/>\n";
 		//print "Application: [$application_resource_path]<br/>\n";
 
-		// Set headers for resource mime types (by file extension)
-		switch( $resource_type ) {
-			// Images 
-			case 'ico':
-				header('Content-Type: image/x-icon;');
-				break;
-			case 'jpg':
-			case 'jpe':
-			case 'jpeg':
-				header('Content-Type: image/jpeg;');
-				break;
-
-			case 'gif':
-				header('Content-Type: image/gif;');
-				break;
-
-			case 'tif':
-			case 'tiff':
-				header('Content-Type: image/tiff;');
-				break;
-
-			case 'bmp':
-				header('Content-Type: image/bmp;');
-				break;
-
-			case 'svg':
-				header('Content-Type: image/svg+xml; charset=UTF-8');
-				break;
-
-			// Audio
-			case 'mp3':
-				header('Content-Type: audio/mpeg;');
-				break;
-
-			case 'wav':
-				header('Content-Type: audio/x-wav;');
-				break;
-
-			// Video
-			case 'mpeg':
-			case 'mpg':
-			case 'mp2':
-			case 'mpa':
-			case 'mpe':
-			case 'mpv2':
-				header('Content-Type: video/mpeg;');
-				break;
-
-			case 'mov':
-			case 'qt':
-				header('Content-Type: video/quicktime;');
-				break;
-
-			case 'avi':
-				header('Content-Type: vidoe/x-msvideo;');
-				break;
-
-			// Text
-			case 'css':
-				header('Content-Type: text/css; charset=UTF-8');
-				break;
-
-			case 'js':
-				header('Content-Type: text/javascript; charset=UTF-8');
-				break;
-
-			case 'xml':
-			default:
-				header('Content-Type: text/plain; charset=UTF-8');
-				break;
-		}
-
 		// To concatenate or supersede?
 		if( $resource_type == 'css' ) {
+			$mime_type = 'Content-Type: text/css; charset=UTF-8';
 			// Concatenate module + application + environment
 			$found = false;
 			$resource_content = "/* NOTE: Gathering Resource: {$file_name} *" . "/\n\n";
@@ -1319,7 +1248,10 @@ EndOfSQL;
 			if( file_exists( $environment_resource_path ) ) { $active_resource_path = $environment_resource_path; }
 			if( $active_resource_path !== null ) {
 				$found = true;
+				//$file_information = new finfo( FILEINFO_MIME, '/usr/share/file/magic' ); 
+				$file_information = new finfo( FILEINFO_MIME );  // Note: magic mime file differs by server
 				$resource_content = file_get_contents( $active_resource_path );
+				$mime_type = $file_information->buffer( $resource_content );
 			}
 			else { $found = false; }
 		}
@@ -1332,6 +1264,7 @@ EndOfSQL;
 		}
 
 		// Return directly to browser
+		header( $mime_type );
 		return $resource_content;
 	}
 

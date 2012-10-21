@@ -30,8 +30,10 @@ class Identity {
 
 	// *** Constructor
 	public function __construct() {
+		global $path_offset;
+
 		// Get URL to Application, Environment, Version Mappings
-		require_once( '../urls.php' );
+		require_once( "{$path_offset}urls.php" );
 
 		// Get URL Components, Make Mappings, and Collect Appropriate Settings
 		$this->determineUrlComponents();        // parses out request protocol, address, and query string
@@ -99,6 +101,8 @@ class Identity {
 
 	// *** Get Application Level Settings
 	protected function determineApplicationSettings() {
+		global $path_offset;
+
 		// Identify Application Version and Environment
 		foreach($this->mappings as $mapping) {
 			$found = false;
@@ -116,7 +120,7 @@ class Identity {
 		}
 
 		// Load Application Settings
-		$path_to_settings = "../environments_{$this->version}/{$this->environment}_settings.php";
+		$path_to_settings = "{$path_offset}environments_{$this->version}/{$this->environment}_settings.php";
 		if( file_exists( $path_to_settings ) ) { 
 			require_once( $path_to_settings ); 
 			$this->settings  = $settings;
@@ -125,11 +129,11 @@ class Identity {
 		}
 		else { 
 			// TODO: appropriate thing if settings.php file is missing..
-			print "Error: the \"$path_to_settings\" file is missing."; exit;  // TODO: log this error..
+			print "Error: the \"$path_to_settings\" file is missing.\n"; exit;  // TODO: log this error..
 		}
 
 		// Set Working Direction to Appropriate Code Base
-		chdir( "../application_{$this->version}/modules" );
+		chdir( "{$path_offset}application_{$this->version}/modules" );
 	}
 
 }

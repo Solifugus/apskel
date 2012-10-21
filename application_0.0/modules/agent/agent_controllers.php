@@ -144,7 +144,7 @@ class AgentControllers extends Controllers
 		$warnings  = '';
 		$statement = '';
 		$return    = '';
-		$topic     = 'Small Talk';
+		$topic     = 'Nothing in Particular';
 		$passcode  = '';
 
 		// Convert all request variables to local variables (except for any required by missing)
@@ -153,6 +153,7 @@ class AgentControllers extends Controllers
 		// Unless a fresh visit to this page, show any missing parameters as warnings.
 		if( $fresh !== true ) { $param['warnings'] .= $missing; }
 		else {
+			$param['topic'] = $topic;
 			if( $statement == '' ) { $statement = 'Introduce yourself.'; }
 		}
 
@@ -251,6 +252,7 @@ class AgentControllers extends Controllers
 		$warnings   = '';
 		$meaning_id = null;
 		$recognizer = '';
+		$comparison = '';
 		$paradigm   = '';
 
 		// Convert all request variables to local variables (except for any required by missing)
@@ -260,7 +262,7 @@ class AgentControllers extends Controllers
 		if( $fresh !== true ) { $param['warnings'] .= $missing; }
 
 		// Perform Editor logic
-		list( $meaning_id, $problems) = $this->models->saveMeaning( $this->framework->removeAllBut( array( 'meaning_id', 'recognizer', 'paradigm'), $param ) );
+		list( $meaning_id, $problems) = $this->models->saveMeaning( $this->framework->removeAllBut( array( 'meaning_id', 'recognizer', 'comparison', 'paradigm'), $param ) );
 		$response = array( 'meaning_id' => $meaning_id, 'warnings' => $warnings . $problems, 'messages' => $messages );
 
 		// Compose and Output the View
