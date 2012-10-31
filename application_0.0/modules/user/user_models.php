@@ -158,14 +158,17 @@ class UserModels extends Models
 	// Logs user in -- irrespective of any validation
 	public function login( $user_name ) {
 		$_SESSION['user_name'] = $user_name;
-		// $_SESSION['user_id']   =  XXX
+		$sql = "SELECT id FROM users WHERE user_name = '{$user_name}'";
+		$result = $this->framework->runSql( $sql );
+		// TODO: What if no such user?  (shouldn't happen, of course)
+		$_SESSION['user_id'] = $result[0]['id'];
 		// TODO: log this
 	}
 
 	public function logout( $user_name ) {
 		if( $user_name == $_SESSION['user_name'] ) {
-			$_SESSION['user_name'] = '';
-			$_SESSION['user_id']   = null;
+			unset( $_SESSION['user_name'] );
+			unset( $_SESSION['user_id'] );
 			return true;
 		}
 		if( $this->isSuperUser() ) {

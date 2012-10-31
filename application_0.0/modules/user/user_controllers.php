@@ -174,9 +174,10 @@ class UserControllers extends Controllers {
 		// Validate/Translate Input
 		$user_name = '';
 		$password  = '';
+		$next_page = '';
 
 		extract( $param );
-		//if( !isset( $param['messages'] ) ) { $param['messages'] = 'To sign in, enter your user name and password.'; }
+		if( $next_page == '' ) { $next_page = $this->framework->getSetting('post_login_page'); }
 		if( !isset( $param['warnings'] ) ) { $param['warnings'] = ''; }
 		if( $param['fresh'] !== true ) { $param['warnings'] .= $missing; }
 
@@ -185,10 +186,9 @@ class UserControllers extends Controllers {
 			// If user/password are correct, go to appropriate page
 			if( $this->models->isPasswordCorrect( $user_name, $password, true ) ) {
 				$this->models->login( $user_name );
-				$post_login_page   = $this->framework->getSetting('post_login_page');
-				$module            = $this->framework->getUriModule( $post_login_page );
-				$request           = $this->framework->getUriRequest( $post_login_page );
-				$param             = $this->framework->getUriParameters( $post_login_page );
+				$module            = $this->framework->getUriModule( $next_page );
+				$request           = $this->framework->getUriRequest( $next_page );
+				$param             = $this->framework->getUriParameters( $next_page );
 				$param['messages'] = "Login as \"{$user_name}\" was successful.";
 				return $this->framework->serviceRequest( $module, $request, $param );
 			} else {

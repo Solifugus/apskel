@@ -1,0 +1,33 @@
+<link rel="stylesheet" href="{{@resource}}/jquery-ui/css/ui-lightness/jquery-ui-1.8.24.custom.css" type="text/css" media="screen"/>
+<script type="text/javascript" src="{{@resource}}/jquery-ui/js/jquery-1.8.2.min.js"></script>
+<script type="text/javascript" src="{{@resource}}/jquery-ui/js/jquery-ui-1.8.24.custom.min.js"></script>
+<link rel="stylesheet" href="{{@resource}}/main.css" type="text/css" media="screen"/>
+
+<!-- Page to Define or Redefine a Module to Build -->
+<div id="blog_manage_wrapper" class="view_wrapper">
+	{{=application_header.html}}
+	<span id="title" class="minor_title">Blog Management</span>
+	<hr/>
+	{{=message_area.html}}
+<br/>
+<hr/>
+	<!-- View Specifics -->
+	<form method="post" action="{{@link}}/manage">
+		<label for="title" class="label">Long Title:</label><input id="title" class="input" name="title" value="{{title}}"/><br/>
+		<label for="name" class="label">Short Name:</label><input id="name" class="input" name="title" value="{{name}}"/><br/>
+		<label for="description" class="label">Description:</label><br/>
+		<textarea id="description" class="description" name="description">{{description}}</textarea><br/>
+		<label for="commenting" class="label">Commenting:</label>
+			<select id="commenting" name="commenting">
+				<option>{{commenting}}</option>
+				<option>Disallowed</option>
+				<option>Moderated</option>
+				<option>Unmoderated</option>
+			</select><br/>
+		<div id="button-bar">
+			<input type="reset" id="reset" class="buton" value="Reset"/><input type="submit" id="submit" class="buton" value="Submit"/><br/>
+		</div>
+		<br/>
+	</form>
+	{{=application_footer.html}}
+</div>

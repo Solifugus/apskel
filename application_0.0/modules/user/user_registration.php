@@ -37,13 +37,15 @@ $requests = array(
 				array( 'name' => 'forename',  'required' => false, 'default' => null,   'description' => "User's given (casually called) name." ),
 				array( 'name' => 'surname',   'required' => false, 'default' => null,   'description' => "User's family name." ),
 				array( 'name' => 'password',  'required' => false, 'default' => null,   'description' => "User's login password." ),
+				array( 'name' => 'next_page', 'required' => false, 'default' => null,   'description' => "Page to go to after successful registration." )
 			)
 		),
 		'login'    => array(
 			'description' => 'The "login" request is for signing the user in (identification/authentication).',
 			'parameters' => array( 
-				array( 'name' => 'user_name', 'required' => true, 'default' => null,    'description' => "User's login name." ),
-				array( 'name' => 'password',  'required' => true, 'default' => null,    'description' => "User's login password." )
+				array( 'name' => 'user_name', 'required' => true,  'default' => null,    'description' => "User's login name." ),
+				array( 'name' => 'password',  'required' => true,  'default' => null,    'description' => "User's login password." ),
+				array( 'name' => 'next_page', 'required' => false, 'default' => null,    'description' => "Page to go to after successful login." )
 			)
 		),
 		'logout'    => array(

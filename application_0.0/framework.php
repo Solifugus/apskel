@@ -1270,6 +1270,8 @@ EndOfSQL;
 
 	// Is an associative array?  (else numeric array)
 	public function isAssociative( $array ) {
+		// TODO: what if not an array?
+		if( !is_array( $array ) ) { print "DEBUG: framework->isAssociative( " . print_r( $array, true ) . " ) NOT AN ARRAY<br/>\n"; }
 		return array_keys( $array ) !== range( 0, count( $array ) - 1 );
 	}
 

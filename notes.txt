@@ -110,6 +110,10 @@ TODO:
     * Security    -- problem pertains to potential security breach
     * Critical -- main functionality failed
     * Minor    -- inconvenience may have resulted to user
+  - I/O Views.  Create a mechanism to create a stream of views that can both
+    show and allow editing or entry of data.  {{embed 1-1:someview}}
+    "embed" is how the subform is connected; "1-1" is the relationship; 
+    "someview" is the view name (html or other depends on access protocol)
 
 ==================
 git Hub

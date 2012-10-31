@@ -711,7 +711,6 @@ function buildModule( $version, $module_name ) {
 	$registration .= "\n";
 	$registration .= "\$requests = array(\n";
 	$registration .= "\t'description' => '" . str_replace( "'", "\\'", $requests['description'] ) . "',\n";
-	$registration .= "\t'default' => '',\n";  // TODO: add default request
 	$registration .= "\t'requests' => array(\n";
 	foreach( $requests['requests'] as $request_name => $request ) {
 		$registration .= "\t\t'{$request_name}' => array(\n";
@@ -767,32 +766,59 @@ function buildModule( $version, $module_name ) {
 	$models .= "\n";
 	$models .= "} // end of {$classifized_module_name}Models class\n";
 
-	// Build initial view templates
-	$views = array();
+
+	// Build the module views file
+	$views  = "<?php\n";
+	$views .= "\n";
+	$views .= "# File: ~/application_{$version}/modules/{$module_name}/{$module_name}_views.php\n";
+	$views .= "# Purpose: provide views for the {$module_name} module\n";
+	$views .= "# {$short_when} ... created.\n";
+	$views .= "\n";
+	$views .= "require_once('views.php');\n";
+	$views .= "\n";
+	$views .= "# Class Declaration for {$module_name} Module's views\n"; 
+	$views .= "class {$classifized_module_name}Views extends Views\n";
+	$views .= "{\n";
+        $views .= "\t// Constructor\n";
+        $views .= "\tpublic function __construct( \$param_framework ) {\n";
+	$views .= "\t\t\$this->framework = \$param_framework;\n";
+	$views .= "\t\t\$this->loadViewTemplates(dirname(__FILE__));\n";
+        $views .= "\t} // end of __construct method\n";
+	$views .= "\n";
 	foreach( $requests['requests'] as $request_name => $request ) {
-		$lower_module_name = strtolower( $module_name );
-		$upper_module_name = ucfirst( str_replace( '_', ' ', $module_name ) );
-		$lower_request     = strtolower( $request_name );
-		$upper_request     = ucfirst( str_replace( '_', ' ', $request_name ) );
-		$views[$request_name]  = "<link rel=\"stylesheet\" href=\"{{@resource}}/jquery-ui/css/ui-lightness/jquery-ui-1.8.24.custom.css\" type=\"text/css\" media=\"screen\"/>\n";        
-		$views[$request_name] .= "<script type=\"text/javascript\" src=\"{{@resource}}/jquery-ui/js/jquery-1.8.2.min.js\"></script>\n";
-		$views[$request_name] .= "<script type=\"text/javascript\" src=\"{{@resource}}/jquery-ui/js/jquery-ui-1.8.24.custom.min.js\"></script>\n";
-		$views[$request_name] .= "<link rel=\"stylesheet\" href=\"{{@resource}}/main.css\" type=\"text/css\" media=\"screen\"/>\n";
-		$views[$request_name] .= "<script type=\"text/javascript\" src=\"{{@resource}}/define.js\"></script>\n";
-		$views[$request_name] .= "\n";
-		$views[$request_name] .= "<!-- Page to Define or Redefine a Module to Build -->\n";
-		$views[$request_name] .= "<div id=\"{$lower_module_name}_{$lower_request}_wrapper\" class=\"view_wrapper\">\n";
-	       	$views[$request_name] .= "\t{{=application_header.html}}\n";
-	       	$views[$request_name] .= "\t<span id=\"title\" class=\"minor_title\">{$upper_module_name} {$upper_request}</span>\n";
-	       	$views[$request_name] .= "\t<hr/>\n";
-	       	$views[$request_name] .= "\t{{=message_area.html}}\n";
-	       	$views[$request_name] .= "<br/>\n";
-	       	$views[$request_name] .= "<hr/>\n";
-	        $views[$request_name] .= "\t<!-- View Specifics -->\n";
-		$views[$request_name] .= "\n";
-		$views[$request_name] .= "\t{{=application_footer.html}}\n";
-	        $views[$request_name] .= "</div>\n";
+		$request_name = strtolower( $request_name );
+		$view_name = ucfirst( $request_name );
+		$classifized_view_name = classifize( $request_name );
+		$views .= "\t// View for the {$view_name} Request\n";
+		$views .= "\tpublic function compose{$classifized_view_name}( \$param_fields = array() ) {\n";
+		$views .= "\n";
+		$views .= "\t\t// Set parameter defaults;\n";
+		$views .= "\t\t\$title = '{$module_name} {$view_name}';\n";
+		$views .= "\t\t\$messages = 'Welcome to the {$module_name} {$view_name} page.';\n";
+		$views .= "\t\t\$warnings = '';\n";
+		foreach( $request['parameters'] as $parameter ) {
+			$views .= "\t\t\${$parameter['name']} = '';\n";
+		}
+		$views .= "\n";
+		$views .= "\t\t// Override parameter defaults;\n";
+		$views .= "\t\textract( \$param_fields );\n";
+		$views .= "\n";
+		$views .= "\t\t// Compose and Output the View;\n";
+		$views .= "\t\treturn <<<EndOfHTML\n";
+		$views .= "\t\t\t<link rel=\"stylesheet\" href=\"http://apskel.com/resources/user/main.css\" type=\"text/css\" media=\"screen\"/>\n";
+		$views .= "\t\t\t<div id=\"{$request_name}_view_wrapper\" class=\"view_wrapper\">\n";
+		$views .= "\t\t\t\t<span id=\"title\">\$title</span><br/><hr/>\n";
+		$views .= "\t\t\t\t<div id=\"message_area\" class=\"message_area\">\n";
+		$views .= "\t\t\t\t\t<span id=\"messages\" class=\"messages\">\$messages</span><br/>\n";
+		$views .= "\t\t\t\t\t<span id=\"warnings\" class=\"warnings\">\$warnings</span><br/>\n";
+		$views .= "\t\t\t\t</div>\n";
+		$views .= "\t\t\t\t<br/>\n";
+		$views .= "\t\t\t</div>\n";
+		$views .= "EndOfHTML;\n";
+		$views .= "\t} // end of compose{$view_name} view\n";
+		$views .= "\n";
 	}
+	$views .= "} // end of {$classifized_module_name}Views class\n";
 
 	// Build the module controllers file
 	$controllers  = "<?php\n";
@@ -803,6 +829,7 @@ function buildModule( $version, $module_name ) {
 	$controllers .= "\n";
 	$controllers .= "require_once('controllers.php');\n";
 	$controllers .= "require_once('{$module_name}/{$module_name}_models.php');\n";
+	$controllers .= "require_once('{$module_name}/{$module_name}_views.php');\n";
 	$controllers .= "\n";
 	$controllers .= "# Class Declaration for {$module_name} Module's Controllers\n"; 
 	$controllers .= "class {$classifized_module_name}Controllers extends Controllers\n";
@@ -813,15 +840,15 @@ function buildModule( $version, $module_name ) {
 	$controllers .= "\n";
 	$controllers .= "\t\t// Instantiate the associated model and view\n";
 	$controllers .= "\t\t\$this->models = new {$module_name}Models(\$this->framework);\n";
+	$controllers .= "\t\t\$this->views = new {$module_name}Views(\$this->framework);\n";
         $controllers .= "\t} // end of __construct method\n";
 	$controllers .= "\n";
 	foreach( $requests['requests'] as $request_name => $request ) {
 		$request_name = strtolower( $request_name );
 		$controller_name = ucfirst( $request_name );
-		$lower_controller_name = strtolower( $request_name );
 		$classifized_controller_name = classifize( $request_name );
-		$controllers .= "\t// Handler for the {$controller_name} Request\n";
-		$controllers .= "\tpublic function process{$classifized_controller_name}( \$param = array(), \$missing = '' ) {\n";
+		$controllers .= "\t// Controller for the {$controller_name} Request\n";
+		$controllers .= "\tpublic function process{$classifized_controller_name}( \$param = array() ) {\n";
 		$controllers .= "\n";
 		$controllers .= "\t\t// Set parameter defaults (in case any required ones are missing)\n";
 		$controllers .= "\t\t\$messages = '';\n";
@@ -849,8 +876,7 @@ function buildModule( $version, $module_name ) {
 			$controllers .= "\t\t}\n";
 			$controllers .= "\t\telse {\n";
 			$controllers .= "\t\tif( \$messages !== '' ) { \$param['messages'] = \$messages; }\n";
-			$controllers .= "\t\t\$format = array( 'format' => 'template', 'template_file' => 'initialize.html' );\n";
-			$controllers .= "\t\treturn array( \$param, \$format );\n";
+			$controllers .= "\t\treturn \$this->views->compose{$classifized_controller_name}( \$param );\n";
 			$controllers .= "\t\t}\n";
 			$controllers .= "\t\t\n";
 		} 
@@ -859,8 +885,7 @@ function buildModule( $version, $module_name ) {
 			$controllers .= "\t\t// TODO\n";
 			$controllers .= "\n";
 			$controllers .= "\t\t// Compose and Output the View;\n";
-			$controllers .= "\t\t\$format = array( 'format' => 'template', 'template_file' => '{$lower_controller_name}.html' );\n";
-			$controllers .= "\t\treturn array( \$param, \$format );\n";
+			$controllers .= "\t\treturn \$this->views->compose{$classifized_controller_name}( \$param );\n";
 		}
 		$controllers .= "\t} // end of process{$controller_name} controller\n";
 		$controllers .= "\n";
@@ -870,20 +895,18 @@ function buildModule( $version, $module_name ) {
 	// Save the module registration, models, views, and controllers files
 	if( !file_exists( "../application_{$version}/modules/{$module_name}" ) ) {
 		system( "mkdir ../application_{$version}/modules/{$module_name}" );
-		system( "mkdir ../application_{$version}/modules/{$module_name}/resources" );
-		system( "mkdir ../application_{$version}/modules/{$module_name}/views" );
 	}
 	else {
 		system( "mv ../application_{$version}/modules/{$module_name}/{$module_name}_registration.php ../application_{$version}/modules/{$module_name}/until-{$file_when}_{$module_name}_registration.php" );
 		system( "mv ../application_{$version}/modules/{$module_name}/{$module_name}_models.php ../application_{$version}/modules/{$module_name}/until-{$file_when}_{$module_name}_models.php" );
+		system( "mv ../application_{$version}/modules/{$module_name}/{$module_name}_views.php ../application_{$version}/modules/{$module_name}/until-{$file_when}_{$module_name}_views.php" );
 		system( "mv ../application_{$version}/modules/{$module_name}/{$module_name}_controllers.php ../application_{$version}/modules/{$module_name}/until-{$file_when}_{$module_name}_controllers.php" );
 	}
 	file_put_contents( "../application_{$version}/modules/{$module_name}/{$module_name}_registration.php", $registration );
 	file_put_contents( "../application_{$version}/modules/{$module_name}/{$module_name}_models.php", $models );
+	file_put_contents( "../application_{$version}/modules/{$module_name}/{$module_name}_views.php", $views );
 	file_put_contents( "../application_{$version}/modules/{$module_name}/{$module_name}_controllers.php", $controllers );
-	foreach( $views as $view_name => $view_template ) {
-		file_put_contents( "../application_{$version}/modules/{$module_name}/views/{$view_name}.html", $view_template );
-	}
+
 	return "The \"{$module_name}\" Module successfully built.";
 }
 	

@@ -1,0 +1,141 @@
+
+.ajax_reponse { display: none; }
+
+#transcript {
+	height: 400px;
+	overflow-y: scroll;
+}
+
+#user_statement {
+	display: block;
+	width: 90%;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+#recognizer_new {
+	width: 400px;
+}
+
+.web_dialog {
+	display: none;
+}
+
+a:link {
+	text-decoration: none;
+}
+
+a:visited {
+}
+
+a:hover {
+	color: green;
+}
+
+a:active {
+}
+
+a:focus {
+}
+
+th {
+	font-weight: bold;
+}
+
+th.left {
+	text-align: left;
+}
+
+label {
+	font-weight: bold;
+}
+
+.footer { 
+	text-align: center;
+}
+
+#topic_wrapper {
+	visibility: hidden;
+}
+
+#new_meaning_wrapper {
+	visibility: hidden;
+}
+
+#edit_meaning_wrapper {
+	visibility: hidden;
+}
+
+#recognizer { 
+	display: block;
+	width: 100%;
+	height: 20px;
+	font-size: 12px;
+	text-align: center;
+	color: #FFF;
+	background-color: #000;
+}
+
+#reactions {
+	width: 100%;
+	height: 60%;
+	overflow-y: scroll;
+}
+
+.reaction {
+	background-color: #CCC !important;  /* BORKEN */
+}
+
+.reaction_left {
+	float: left;
+	margin: 10px;
+	width: 100px;
+	text-align: center;
+}
+
+.reaction_right {
+	float: left;
+	margin: 10px;
+	width: 450px;
+}
+
+.reaction_conditions {
+	width: 100%;
+	height: 40px;
+}
+
+.reaction_actions {
+	width: 100%;
+	height: 80px;
+}
+
+.script_textarea {
+	width: 100%;
+	height: 400px;
+	text-align: left;
+}
+
+#meaning_directory {
+	height: 400px;
+	overflow-y: scroll;
+}
+
+#reaction_directory {
+	height: 400px;
+	overflow-y: scroll;
+}
+
+.reaction_definition {
+	border-style: dotted;
+	width: 85%;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.meaning_definitions {
+	width: 85%;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+
