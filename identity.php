@@ -116,7 +116,7 @@ class Identity {
 		}
 		if( $found !== true ) {
 			// TODO: what is appropriate to do if the environment isn't identified?
-			print "Environment not known.."; exit;  // TODO: better thing to do here?
+			print "Environment \"{$this->request_address}\" not known.."; exit;  // TODO: better thing to do here?
 		}
 
 		// Load Application Settings

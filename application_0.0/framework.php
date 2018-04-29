@@ -137,7 +137,7 @@ class Framework {
 
 	// Database Port Number or Null for Default
 	public function getDatabasePort( $id = 0 ) {
-		return $this->databases[$id]['name'];
+		return $this->databases[$id]['port'];
 	}
 
 	// Name of Database in Database Server
@@ -234,8 +234,8 @@ class Framework {
 			$_SESSION['user_id']   = null;
 			
 			// Set the landing module/request as default
-			$_SESSION['module']   = $this->getUriModule( $this->identity->settings['landing_page'] ); // module last set as session default
-			$_SESSION['request']  = $this->getUriRequest( $this->identity->settings['landing_page'] );    // request last se as session default
+			$_SESSION['module']   = $this->getUriModule( $this->identity->settings['landing_page'] );   // module last set as session default
+			$_SESSION['request']  = $this->getUriRequest( $this->identity->settings['landing_page'] );  // request last set as session default
 
 			// current session output format, unless overridden
 			if( $this->identity->request_protocol == 'cli' ) {
