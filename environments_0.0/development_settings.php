@@ -1,7 +1,7 @@
 <?php
 
 $settings = array( 
-	'landing_page' => 'landing.html'
+	'landing_page' => 'wiki'
 );
 
 $databases = array(
