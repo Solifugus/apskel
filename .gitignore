@@ -1,0 +1,31 @@
+# Logs
+logs/
+*.log
+nohup.out
+
+# Editor backups / swap files
+*~
+*.swp
+*.swo
+*.bak
+
+# OS-generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE directories
+.vscode/
+.idea/
+
+# PHP / Composer (not currently used, but ignore if introduced)
+/vendor/
+composer.phar
+
+# Local environment overrides
+.env
+.env.*

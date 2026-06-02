@@ -8,10 +8,11 @@ This is the root directory for this installation of the Apskel framework.
 should exist under the apskel/ directory:
 
 - apskel/notes.txt
-- apskel/README.dm
+- apskel/README.md
 - apskel/LICENSE
+- apskel/router.php          (dev server entry; see README.md)
 - apskel/webroot/
-- apskel/identification.php
+- apskel/identity.php
 - apskel/environments_{version}/
 - apskel/application_{version}/
 - apskel/tools/
@@ -24,7 +25,7 @@ The Request Handling Process
      - The request may come from the webserver or command line parameters, 
        imitating a web request.
 
-  2. identification.php: The identity (application version and environment) are
+  2. identity.php: The identity (application version and environment) are
      determined from the domain name used.
 
   3. framework.php: The request parameters are cleaned, translated, and sent to
