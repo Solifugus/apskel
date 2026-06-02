@@ -16,12 +16,14 @@ class BlogModels extends Models
 
 public function saveBlog( $user_id, $fields ) {
 	$fields = $this->framework->removeAllBut( array( 'title', 'name', 'description', 'commenting' ), $fields );
-	$fields['owner_id'] = $user_id;
-	$this->updateElseInsert( 'blog_settings', $fields, 'owner_id = :owner_id', array( ':owner_id' => $user_id ) );
+	// Upsert via the model keystone: owner_id identifies the row and is merged in
+	// automatically on insert. Columns are validated against the blog_settings
+	// registration and all values are bound.
+	$this->setRecords( 'blog_settings', $fields, array( 'owner_id' => $user_id ), true );
 }
 
 public function getBlog( $user_id ) {
-	$results = $this->buildSelect( 'blog_settings', '*', 'owner_id = :owner_id', array( ':owner_id' => $user_id ) );
+	$results = $this->getRecords( 'blog_settings', array( 'owner_id' => $user_id ) );
 	if( empty( $results ) ) {
 		$defaults = array(
 			'title'       => "{$_SESSION['user_name']}'s Blog",
