@@ -211,6 +211,8 @@ class UserModels extends Models
 			$this->framework->logMessage( "login() called for unknown user \"{$user_name}\".", WARNING );
 			return false;
 		}
+		// New privilege level -> new session id + CSRF token (defeats fixation).
+		$this->framework->regenerateSession();
 		$_SESSION['user_name'] = $user_name;
 		$_SESSION['user_id']   = $user_id;
 		return true;
@@ -220,6 +222,7 @@ class UserModels extends Models
 		if( isset( $_SESSION['user_name'] ) && $user_name == $_SESSION['user_name'] ) {
 			unset( $_SESSION['user_name'] );
 			unset( $_SESSION['user_id'] );
+			$this->framework->regenerateSession();
 			return true;
 		}
 		if( $this->isSuperUser() ) {

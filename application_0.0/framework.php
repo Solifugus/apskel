@@ -221,7 +221,23 @@ class Framework {
 
 	// *** Revive or Initialize the Session  (TODO: Abstract to Maintain a CLI Session AND ALSO store session in database)
 	protected function determineSessionVariables() {
-		// Start a/the Session and Initiatize, if New  
+		// Harden the session cookie before the session starts (no effect on CLI,
+		// which has no cookies). HttpOnly keeps the cookie away from JavaScript;
+		// SameSite=Lax blocks it on cross-site POSTs (defence-in-depth alongside
+		// the CSRF token below); Secure is set only under HTTPS so plain-HTTP dev
+		// still works.
+		if ( PHP_SAPI !== 'cli' && session_status() !== PHP_SESSION_ACTIVE ) {
+			$is_https = ( isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== '' && strtolower( $_SERVER['HTTPS'] ) !== 'off' );
+			session_set_cookie_params( array(
+				'lifetime' => 0,
+				'path'     => '/',
+				'httponly' => true,
+				'samesite' => 'Lax',
+				'secure'   => $is_https,
+			) );
+		}
+
+		// Start a/the Session and Initiatize, if New
 		if (!session_start()) {
 			// TODO: add cli session support in here..
 			print "Unable to start a session.  Is this a cookie issue?\n";
@@ -229,6 +245,13 @@ class Framework {
 			exit;
 		} else {
 			$this->session_id = session_id();
+		}
+
+		// Ensure a per-session CSRF token exists. It is embedded into every POST
+		// form (see injectCsrfIntoForms) and required back on every state-changing
+		// request (see isCsrfValid).
+		if ( empty( $_SESSION['csrf_token'] ) ) {
+			$_SESSION['csrf_token'] = bin2hex( random_bytes( 32 ) );
 		}
 		
 		// If Session is New, Set Up Defaults, etc.
@@ -376,6 +399,15 @@ class Framework {
 		if( $module_name   === null ) { $module_name   = $this->module_name; }
 		if( $request_name  === null ) { $request_name  = $this->request_name; }
 		if( $parameters    === null ) { $parameters    = $_REQUEST; }
+
+		// Reject state-changing HTTP requests that lack a valid CSRF token. Only
+		// the main request is checked; sub-requests run server-side under the
+		// already-validated main request. Safe methods and CLI are exempt.
+		if( $is_main_request && !$this->isCsrfValid() ) {
+			if( !headers_sent() ) { http_response_code( 403 ); }
+			$this->logMessage( "Blocked request with missing/invalid CSRF token (module=\"{$module_name}\", request=\"{$request_name}\").", WARNING );
+			return $this->wrapAsHtml( "<h1>403 Forbidden</h1>\n<p>Your session security token was missing or invalid. Please reload the page and try again.</p>\n" );
+		}
 
 		//print "DEBUG:\nModule: $module_name; Request: $request_name; Parameters:"; var_dump($parameters); exit; 
 
@@ -549,7 +581,7 @@ class Framework {
 				return $this->formatAsText( $response, $is_main_request );
 				break;
 			case 'html':
-				return $this->formatAsHtml( $response, $is_main_request);
+				return $this->injectCsrfIntoForms( $this->formatAsHtml( $response, $is_main_request) );
 				break;
 			case 'xml':
 				return $this->formatAsXml( $response, $is_main_request );
@@ -558,13 +590,13 @@ class Framework {
 				return $this->formatAsJson( $response, $is_main_request );
 				break;
 			case 'view':
-				return $this->formatAsView( $response, $module_name, $format['view_file'], $is_main_request );
+				return $this->injectCsrfIntoForms( $this->formatAsView( $response, $module_name, $format['view_file'], $is_main_request ) );
 				break;
 			case 'template':
-				return $this->formatAsTemplate( $response, $module_name, $format['template_file'], $is_main_request );
+				return $this->injectCsrfIntoForms( $this->formatAsTemplate( $response, $module_name, $format['template_file'], $is_main_request ) );
 				break;
 			case 'direct-html':
-				return $this->wrapAsHtml( $response );
+				return $this->injectCsrfIntoForms( $this->wrapAsHtml( $response ) );
 				break;
 			default:
 				$this->logMessage( "A unrecognized response format was specified.", WARNING );
@@ -576,6 +608,71 @@ class Framework {
 
 	private function wrapAsHtml( $html ) {
 		return "<!DOCTYPE=html>\n<html>\n<body>\n$html</body>\n</html>\n";
+	}
+
+	// The current session's CSRF token (empty string before a session exists).
+	public function getCsrfToken() {
+		return isset( $_SESSION['csrf_token'] ) ? $_SESSION['csrf_token'] : '';
+	}
+
+	// A ready-to-print hidden form field carrying the CSRF token, for any module
+	// that builds forms in PHP rather than via the auto-injected template path.
+	public function getCsrfField() {
+		return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars( $this->getCsrfToken(), ENT_QUOTES ) . '" />';
+	}
+
+	// Roll the session id and CSRF token. Call on any authentication change
+	// (login/logout) to defeat session fixation.
+	public function regenerateSession() {
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_regenerate_id( true );
+		}
+		$_SESSION['csrf_token'] = bin2hex( random_bytes( 32 ) );
+	}
+
+	// True if the current main HTTP request is allowed to proceed under CSRF
+	// rules. Safe methods (GET/HEAD/OPTIONS) and non-HTTP protocols (CLI) are
+	// exempt; every other method must present the session's token, either as the
+	// POSTed csrf_token field or an X-CSRF-Token header. Read from $_POST/headers
+	// (never $_REQUEST, which the router merges URL path/query params into).
+	protected function isCsrfValid() {
+		$protocol = strtolower( trim( $this->identity->request_protocol ) );
+		if ( $protocol !== 'http' && $protocol !== 'https' ) { return true; }
+
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( $_SERVER['REQUEST_METHOD'] ) : 'GET';
+		if ( in_array( $method, array( 'GET', 'HEAD', 'OPTIONS' ), true ) ) { return true; }
+
+		$expected = $this->getCsrfToken();
+		if ( $expected === '' ) { return false; }
+
+		$provided = '';
+		if ( isset( $_POST['csrf_token'] ) )              { $provided = $_POST['csrf_token']; }
+		elseif ( isset( $_SERVER['HTTP_X_CSRF_TOKEN'] ) ) { $provided = $_SERVER['HTTP_X_CSRF_TOKEN']; }
+
+		return is_string( $provided ) && hash_equals( $expected, $provided );
+	}
+
+	// Insert the hidden CSRF field immediately after every opening <form ..> tag
+	// that submits via POST, so existing and future POST forms are protected
+	// without editing each template. GET forms are left untouched.
+	private function injectCsrfIntoForms( $html ) {
+		if ( !is_string( $html ) || $html === '' ) { return $html; }
+		$protocol = strtolower( trim( $this->identity->request_protocol ) );
+		if ( $protocol !== 'http' && $protocol !== 'https' ) { return $html; }
+		$field = $this->getCsrfField();
+		if ( $this->getCsrfToken() === '' ) { return $html; }
+
+		return preg_replace_callback(
+			'/<form\b[^>]*>/i',
+			function( $matches ) use ( $field ) {
+				$tag = $matches[0];
+				if ( preg_match( '/\bmethod\s*=\s*["\']?\s*post\b/i', $tag ) ) {
+					return $tag . "\n" . $field;
+				}
+				return $tag;
+			},
+			$html
+		);
 	}
 
 	private function formatAsPreformatted( $response, $mime_type, $is_main_request ) {
