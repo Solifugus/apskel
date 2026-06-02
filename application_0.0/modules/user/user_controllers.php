@@ -191,7 +191,12 @@ class UserControllers extends Controllers {
 				$param             = $this->framework->getUriParameters( $next_page );
 				$param['messages'] = "Login as \"{$user_name}\" was successful.";
 				return $this->framework->serviceRequest( $module, $request, $param );
-			} else {
+			}
+			elseif( $this->models->isUserExist( $user_name ) && !$this->models->isActive( $user_name ) ) {
+				// Right or wrong password, steer a known-deactivated account toward recovery.
+				$param['warnings'] .= 'This account is deactivated. Use "Recover Access" to receive an activation code. ';
+			}
+			else {
 				$param['warnings'] .= 'Authentication Failed. ';
 			}
 		}
@@ -268,15 +273,53 @@ class UserControllers extends Controllers {
 	}
 
 	// *** Process Change Password Requests
-	public function processChange($param, $missing) {
-		// TODO : build this..
+	public function processChange( $param, $missing ) {
+		if( !isset( $param['warnings'] ) ) { $param['warnings'] = ''; }
+		if( !isset( $param['messages'] ) ) { $param['messages'] = ''; }
+		if( $param['fresh'] !== true ) { $param['warnings'] .= $missing; }
+
+		// Changing a password requires being logged in.
+		if( !isset( $_SESSION['user_id'] ) ) {
+			$param['warnings']  .= 'You must be logged in to change your password. ';
+			$param['next_page']  = 'user/change';
+			return $this->framework->serviceRequest( 'user', 'login', $param );
+		}
+
+		// Act only on an actual submission (not a fresh page view).
+		if( $param['fresh'] !== true && $this->framework->isFormSubmission() ) {
+			$old_password = isset( $param['old_password'] ) ? $param['old_password'] : '';
+			$new_password = isset( $param['new_password'] ) ? $param['new_password'] : '';
+			if( $old_password === '' || $new_password === '' ) {
+				$param['warnings'] .= 'Both the current and new passwords are required. ';
+			}
+			elseif( $this->models->changePassword( $old_password, $new_password ) ) {
+				$param['messages'] .= 'Your password was changed successfully. ';
+			}
+			else {
+				$param['warnings'] .= 'Your password could not be changed; please check your current password. ';
+			}
+		}
 		return $this->views->composeChange( $param );
 	}
-	
+
 	// *** Process Recover Access Requests (given email address, emails one-time use activation code so user can login to change password)
-	public function processRecover($param, $missing) {
-		// TODO: collect email address, put new activation code in user's notes field and mail to user
-		return $this->views->composeRecover();
+	public function processRecover( $param, $missing ) {
+		if( !isset( $param['warnings'] ) ) { $param['warnings'] = ''; }
+		if( !isset( $param['messages'] ) ) { $param['messages'] = ''; }
+		if( $param['fresh'] !== true ) { $param['warnings'] .= $missing; }
+
+		if( $param['fresh'] !== true && $this->framework->isFormSubmission() ) {
+			$email = isset( $param['email'] ) ? $param['email'] : '';
+			if( $email === '' ) {
+				$param['warnings'] .= 'Please provide your email address. ';
+			}
+			else {
+				$this->models->startRecovery( $email );
+				// Never disclose whether the email matched an account.
+				$param['messages'] .= 'If that email matches an account, a one-time activation code has been sent. Use it on the activation page to log in. ';
+			}
+		}
+		return $this->views->composeRecover( $param );
 	}
 
 	// *** Process to Log User Out 
@@ -325,15 +368,51 @@ class UserControllers extends Controllers {
 	}
 	
 	// *** Process Deactivate User Requests
-	public function processDeactivate($param, $missing) {
-		// TODO: If same user or super user, deactivate user
-		return $this->views->composeDeactivate();
+	public function processDeactivate( $param, $missing ) {
+		if( !isset( $param['warnings'] ) ) { $param['warnings'] = ''; }
+		if( !isset( $param['messages'] ) ) { $param['messages'] = ''; }
+		if( $param['fresh'] !== true ) { $param['warnings'] .= $missing; }
+
+		// Deactivating an account requires being logged in.
+		if( !isset( $_SESSION['user_id'] ) ) {
+			$param['warnings']  .= 'You must be logged in to deactivate an account. ';
+			$param['next_page']  = 'user/deactivate';
+			return $this->framework->serviceRequest( 'user', 'login', $param );
+		}
+
+		if( $param['fresh'] !== true && $this->framework->isFormSubmission() ) {
+			$reference = ( isset( $param['user_reference'] ) && $param['user_reference'] !== '' ) ? $param['user_reference'] : null;
+			if( $this->models->deactivateUser( $reference ) ) {
+				$param['messages'] .= 'The account has been deactivated. ';
+			}
+			else {
+				$param['warnings'] .= 'The account could not be deactivated; you may not be authorized, or it is the sole super user. ';
+			}
+		}
+		return $this->views->composeDeactivate( $param );
 	}
-	
+
 	// *** Process Activate User Requests (activate and login user, if activation_code is correct (same as in user's notes field))
-	public function processActivate($param, $missing) {
-		// TODO: collect activation code and activate and login user, if correct (matching user's notes field)
-		return $this->views->composeActivate();
+	public function processActivate( $param, $missing ) {
+		if( !isset( $param['warnings'] ) ) { $param['warnings'] = ''; }
+		if( !isset( $param['messages'] ) ) { $param['messages'] = ''; }
+		if( $param['fresh'] !== true ) { $param['warnings'] .= $missing; }
+
+		if( $param['fresh'] !== true && $this->framework->isFormSubmission() ) {
+			$reference = ( isset( $param['user_reference'] )  && $param['user_reference']  !== '' ) ? $param['user_reference']  : null;
+			$code      = ( isset( $param['activation_code'] ) && $param['activation_code'] !== '' ) ? $param['activation_code'] : null;
+			if( $this->models->activateUser( $reference, $code ) ) {
+				$param['messages'] .= 'The account has been activated. ';
+				// If a correct code logged the user in, send them on to their profile.
+				if( isset( $_SESSION['user_id'] ) ) {
+					return $this->framework->serviceRequest( 'user', 'edit', $param );
+				}
+			}
+			else {
+				$param['warnings'] .= 'The account could not be activated; please check the user and activation code. ';
+			}
+		}
+		return $this->views->composeActivate( $param );
 	}
 	
 } // End of UserController Class

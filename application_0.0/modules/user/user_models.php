@@ -67,8 +67,10 @@ class UserModels extends Models
 		}
 		$hash  = ( $param_password !== '' ) ? password_hash( $param_password, PASSWORD_DEFAULT ) : null;
 		$users = $this->table( 'users' );
+		// New self-registered accounts are active so they can log in immediately; a super
+		// user (or the account holder) can later deactivate, and recovery re-activates.
 		$results = $this->framework->runSql(
-			"INSERT INTO {$users} ( user_name, password, email ) VALUES ( :user_name, :password, :email ) RETURNING id",
+			"INSERT INTO {$users} ( user_name, password, email, active ) VALUES ( :user_name, :password, :email, TRUE ) RETURNING id",
 			array( ':user_name' => $param_login, ':password' => $hash, ':email' => $param_email )
 		);
 		return ( is_array( $results ) && count( $results ) > 0 ) ? $results[0]['id'] : null;
@@ -172,11 +174,16 @@ class UserModels extends Models
 		$is_correct = false;
 		$users      = $this->table( 'users' );
 		$results    = $this->framework->runSql(
-			"SELECT id, user_name, password FROM {$users} WHERE LOWER(user_name) = LOWER(:user_name)",
+			"SELECT id, user_name, password, active FROM {$users} WHERE LOWER(user_name) = LOWER(:user_name)",
 			array( ':user_name' => $param_user )
 		);
 
 		if( is_array( $results ) && count( $results ) === 1 && password_verify( $param_password, (string) $results[0]['password'] ) ) {
+			// A correct password is not enough -- a deactivated account may not log in.
+			if( !$this->isTrue( $results[0]['active'] ) ) {
+				$this->framework->logMessage( "Login refused for deactivated account \"{$results[0]['user_name']}\".", NOTICE );
+				return false;
+			}
 			$is_correct = true;
 			if( $param_login ) {
 				$_SESSION['failed_logins'] = 0;
@@ -191,6 +198,12 @@ class UserModels extends Models
 			// TODO: add lockout ("three strikes") logic.
 		}
 		return $is_correct;
+	}
+
+	// Is the referenced account (login name or ID) currently active? Returns false if unknown.
+	public function isActive( $reference ) {
+		$target = $this->findUser( $reference );
+		return ( $target !== null ) ? $this->isTrue( $target['active'] ) : false;
 	}
 
 	// Is the currently logged-in user a super user?
@@ -230,6 +243,161 @@ class UserModels extends Models
 			return true;
 		}
 		return false;
+	}
+
+	// Resolve a user reference (login name or numeric ID) to a row, or null if not found.
+	private function findUser( $reference ) {
+		$users = $this->table( 'users' );
+		if( is_numeric( $reference ) ) {
+			$results = $this->framework->runSql(
+				"SELECT id, user_name, email, notes, super, active FROM {$users} WHERE id = :id",
+				array( ':id' => $reference )
+			);
+		}
+		else {
+			$results = $this->framework->runSql(
+				"SELECT id, user_name, email, notes, super, active FROM {$users} WHERE LOWER(user_name) = LOWER(:user_name)",
+				array( ':user_name' => $reference )
+			);
+		}
+		return ( is_array( $results ) && count( $results ) > 0 ) ? $results[0] : null;
+	}
+
+	// Change the logged-in user's password. The current password must be supplied and
+	// verified first. Returns true on success, false otherwise.
+	public function changePassword( $old_password, $new_password ) {
+		if( !isset( $_SESSION['user_id'] ) ) {
+			$this->framework->logMessage( 'changePassword() called with no user logged in.', WARNING );
+			return false;
+		}
+		if( (string) $new_password === '' ) { return false; }
+
+		$users   = $this->table( 'users' );
+		$results = $this->framework->runSql(
+			"SELECT password FROM {$users} WHERE id = :id",
+			array( ':id' => $_SESSION['user_id'] )
+		);
+		if( !is_array( $results ) || count( $results ) === 0 ) { return false; }
+		if( !password_verify( $old_password, (string) $results[0]['password'] ) ) {
+			$this->framework->logMessage( "Password change for user ID #{$_SESSION['user_id']} refused: current password incorrect.", WARNING );
+			return false;
+		}
+		$this->framework->runSql(
+			"UPDATE {$users} SET password = :password WHERE id = :id",
+			array( ':password' => password_hash( $new_password, PASSWORD_DEFAULT ), ':id' => $_SESSION['user_id'] )
+		);
+		return true;
+	}
+
+	// Begin account recovery: given an email, issue a one-time activation code, store it on
+	// the matching account, and email it. Returns true only for internal logging -- callers
+	// must NOT reveal to the requester whether the email matched an account.
+	public function startRecovery( $email ) {
+		$users   = $this->table( 'users' );
+		$results = $this->framework->runSql(
+			"SELECT id, user_name FROM {$users} WHERE LOWER(email) = LOWER(:email)",
+			array( ':email' => $email )
+		);
+		if( !is_array( $results ) || count( $results ) === 0 ) {
+			$this->framework->logMessage( "Account recovery requested for unknown email \"{$email}\".", NOTICE );
+			return false;
+		}
+		$code = bin2hex( random_bytes( 16 ) );
+		$this->framework->runSql(
+			"UPDATE {$users} SET notes = :notes WHERE id = :id",
+			array( ':notes' => $code, ':id' => $results[0]['id'] )
+		);
+		$this->sendRecoveryEmail( $email, $results[0]['user_name'], $code );
+		return true;
+	}
+
+	// Deliver a recovery/activation code. Uses PHP mail() where an MTA is available; in the
+	// development environment (usually no MTA) the code is also written to the log so it can
+	// be retrieved for testing.
+	private function sendRecoveryEmail( $email, $user_name, $code ) {
+		$application = $this->framework->getApplication();
+		$subject     = "{$application}: account recovery";
+		$body        = "A recovery request was made for the \"{$user_name}\" account.\n\n"
+		             . "Use this one-time activation code to log in and reset your password:\n\n"
+		             . "    {$code}\n\n"
+		             . "If you did not request this, you can safely ignore this message.\n";
+		$from        = $this->framework->getSetting( 'email_from' );
+		$headers     = ( $from !== null && $from !== '' ) ? "From: {$from}\r\n" : '';
+		@mail( $email, $subject, $body, $headers );
+		if( strtolower( (string) $this->framework->getEnvironment() ) === 'development' ) {
+			$this->framework->logMessage( "DEV recovery code for \"{$user_name}\" <{$email}>: {$code}", NOTICE );
+		}
+	}
+
+	// Deactivate a user account. Defaults to the logged-in user; a super user may deactivate
+	// anyone else. A super user may not deactivate their own account, so the system always
+	// retains a usable super user. Returns true on success.
+	public function deactivateUser( $user_reference = null ) {
+		if( !isset( $_SESSION['user_id'] ) ) { return false; }
+
+		$target = ( $user_reference === null || $user_reference === '' )
+		        ? $this->findUser( $_SESSION['user_id'] )
+		        : $this->findUser( $user_reference );
+		if( $target === null ) { return false; }
+
+		$is_self  = ( $target['id'] == $_SESSION['user_id'] );
+		$is_super = $this->isSuperUser();
+
+		// A user may deactivate themselves; a super user may deactivate others.
+		if( !( $is_self || $is_super ) ) {
+			$this->framework->logMessage( "Unauthorized deactivate attempt on user ID #{$target['id']}.", WARNING );
+			return false;
+		}
+		// Never let a super user lock everyone out by disabling their own super account.
+		if( $is_self && $this->isTrue( $target['super'] ) ) {
+			$this->framework->logMessage( 'A super user attempted to deactivate their own account; refused.', WARNING );
+			return false;
+		}
+
+		$users = $this->table( 'users' );
+		$this->framework->runSql(
+			"UPDATE {$users} SET active = FALSE WHERE id = :id",
+			array( ':id' => $target['id'] )
+		);
+		// If users deactivated themselves, end their session too.
+		if( $is_self ) { $this->logout( $target['user_name'] ); }
+		return true;
+	}
+
+	// Activate a user account. A logged-in super user may activate anyone outright; otherwise a
+	// correct one-time activation code (as issued by startRecovery and stored on the account) is
+	// required, in which case the code is consumed and the user is logged in. Returns true on success.
+	public function activateUser( $user_reference, $activation_code = null ) {
+		if( $user_reference === null || $user_reference === '' ) {
+			if( isset( $_SESSION['user_id'] ) ) { $user_reference = $_SESSION['user_id']; }
+			else { return false; }
+		}
+		$target = $this->findUser( $user_reference );
+		if( $target === null ) { return false; }
+		$users = $this->table( 'users' );
+
+		// A super user can activate anyone without a code.
+		if( $this->isSuperUser() ) {
+			$this->framework->runSql(
+				"UPDATE {$users} SET active = TRUE WHERE id = :id",
+				array( ':id' => $target['id'] )
+			);
+			return true;
+		}
+
+		// Otherwise require the one-time activation code stored on the account.
+		$stored = (string) $target['notes'];
+		if( $stored === '' || (string) $activation_code === '' || !hash_equals( $stored, (string) $activation_code ) ) {
+			$this->framework->logMessage( "Activation for user ID #{$target['id']} refused: bad or missing activation code.", WARNING );
+			return false;
+		}
+		// Correct code: activate, consume the code, and log the user in.
+		$this->framework->runSql(
+			"UPDATE {$users} SET active = TRUE, notes = '' WHERE id = :id",
+			array( ':id' => $target['id'] )
+		);
+		$this->login( $target['user_name'] );
+		return true;
 	}
 
 	// Initialize User Tables (drops and recreates) and create the initial super user.

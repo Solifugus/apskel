@@ -220,19 +220,28 @@ EndOfHTML;
 
 	public function composeChange( $param_fields = array() ) {
 
-		// Establish parameter defaults 
+		// Establish parameter defaults
 		$title     = 'Change Password';
-		$messages  = 'Submit the following to change to a new password.';
+		$messages  = '';
 		$warnings  = '';
-		$user_name = '';
 
 		// Override parameter defaults
 		extract( $param_fields );
-
-		// TODO: add mechanism for viewing / editing custom attributes
+		if( trim( $messages ) === '' ) { $messages = 'Enter your current password and your chosen new password.'; }
 
 		return <<<EndOfHTML
-			<link rel="stylesheet" href="http://apskel.com/resources/user/main.css" type="text/css" media="screen"/>	
+			<script type="text/javascript">
+				function submitIfPasswordsMatch() {
+					var entered  = document.getElementById('new_password').value;
+					var repeated = document.getElementById('new_repeated').value;
+					if( entered !== repeated ) {
+						document.getElementById('warnings').innerHTML = 'The new passwords do not match. Please re-enter them.';
+						return false;
+					}
+					document.getElementById('change_password_form').submit();
+				}
+			</script>
+			<link rel="stylesheet" href="http://apskel.com/resources/user/main.css" type="text/css" media="screen"/>
 			<div id="profile_view_wrapper" class="view_wrapper">
 				<span id="title">$title</span><br/><hr/>
 				<div id="message_area" class="message_area">
@@ -240,32 +249,107 @@ EndOfHTML;
 					<span id="warnings" class="warnings">$warnings</span><br/>
 				</div>
 				<br/>
-				To change your password, use the following:<br/>
-				<form id="profile_edit_form" method="post" action="/user/password">
+				<form id="change_password_form" method="post" action="/user/change">
 					<label for="old_password"  class="label">Old Password:  </label> <input name="old_password" id="old_password" class="input" type="password" /><br/>
 					<label for="new_password"  class="label">New Password:  </label> <input name="new_password" id="new_password" class="input" type="password" /><br/>
-					<label for="new_repeated"  class="label">New Repeated:  </label> <input name="new_repeated" id="new_password" class="input" type="password" /><br/>
-					<input id="button_change"  class="button" type="submit" value="Apply Change"/><br/>
+					<label for="new_repeated"  class="label">New Repeated:  </label> <input name="new_repeated" id="new_repeated" class="input" type="password" /><br/>
+					<input type="hidden" name="fresh" id="fresh" value="false" />
+					<input id="button_change"  class="button" type="button" value="Apply Change" onClick="submitIfPasswordsMatch();"/><br/>
 				</form>
 			</div>
 EndOfHTML;
 	}
 
-	public function composeRecover() {
+	public function composeRecover( $param_fields = array() ) {
+
+		// Establish parameter defaults
+		$title    = 'Recover Account Access';
+		$messages = '';
+		$warnings = '';
+		$email    = '';
+
+		// Override parameter defaults
+		extract( $param_fields );
+		if( trim( $messages ) === '' ) { $messages = 'Enter your email address and a one-time activation code will be sent so you can log in and reset your password.'; }
+
 		return <<<EndOfHTML
-TODO: page to help recover lost user/password -- by mailing an activation code enabling automatic login
+			<link rel="stylesheet" href="http://apskel.com/resources/user/main.css" type="text/css" media="screen"/>
+			<div id="recover_view_wrapper" class="view_wrapper">
+				<span id="title">$title</span><br/><hr/>
+				<div id="message_area" class="message_area">
+					<span id="messages" class="messages">$messages</span><br/>
+					<span id="warnings" class="warnings">$warnings</span><br/>
+				</div>
+				<br/>
+				<form id="recover_form" method="post" action="/user/recover">
+					<label for="email" class="label">Email: </label> <input name="email" id="email" class="input" value="$email"/><br/>
+					<input type="hidden" name="fresh" id="fresh" value="false" />
+					<input id="button_recover" class="button" type="submit" value="Send Code"/><br/>
+				</form>
+				<a href="/user/activate">I already have an activation code</a>
+			</div>
 EndOfHTML;
 	}
 
-	public function composeDeactivate() {
+	public function composeDeactivate( $param_fields = array() ) {
+
+		// Establish parameter defaults
+		$title          = 'Deactivate Account';
+		$messages       = '';
+		$warnings       = '';
+		$user_reference = '';
+
+		// Override parameter defaults
+		extract( $param_fields );
+		if( trim( $messages ) === '' ) { $messages = 'Deactivating an account prevents it from logging in until it is re-activated.'; }
+
 		return <<<EndOfHTML
-TODO: what to show after user deactivation.. 
+			<link rel="stylesheet" href="http://apskel.com/resources/user/main.css" type="text/css" media="screen"/>
+			<div id="deactivate_view_wrapper" class="view_wrapper">
+				<span id="title">$title</span><br/><hr/>
+				<div id="message_area" class="message_area">
+					<span id="messages" class="messages">$messages</span><br/>
+					<span id="warnings" class="warnings">$warnings</span><br/>
+				</div>
+				<br/>
+				<form id="deactivate_form" method="post" action="/user/deactivate">
+					<label for="user_reference" class="label">User (leave blank for yourself): </label> <input name="user_reference" id="user_reference" class="input" value="$user_reference"/><br/>
+					<input type="hidden" name="fresh" id="fresh" value="false" />
+					<input id="button_deactivate" class="button" type="submit" value="Deactivate"/><br/>
+				</form>
+			</div>
 EndOfHTML;
 	}
 
-	public function composeActivate() {
+	public function composeActivate( $param_fields = array() ) {
+
+		// Establish parameter defaults
+		$title           = 'Activate Account';
+		$messages        = '';
+		$warnings        = '';
+		$user_reference  = '';
+		$activation_code = '';
+
+		// Override parameter defaults
+		extract( $param_fields );
+		if( trim( $messages ) === '' ) { $messages = 'Enter your user name and the activation code that was emailed to you.'; }
+
 		return <<<EndOfHTML
-TODO: what to show after user is activated and logged in..
+			<link rel="stylesheet" href="http://apskel.com/resources/user/main.css" type="text/css" media="screen"/>
+			<div id="activate_view_wrapper" class="view_wrapper">
+				<span id="title">$title</span><br/><hr/>
+				<div id="message_area" class="message_area">
+					<span id="messages" class="messages">$messages</span><br/>
+					<span id="warnings" class="warnings">$warnings</span><br/>
+				</div>
+				<br/>
+				<form id="activate_form" method="post" action="/user/activate">
+					<label for="user_reference"  class="label">User:            </label> <input name="user_reference"  id="user_reference"  class="input" value="$user_reference"/><br/>
+					<label for="activation_code" class="label">Activation Code: </label> <input name="activation_code" id="activation_code" class="input" value="$activation_code"/><br/>
+					<input type="hidden" name="fresh" id="fresh" value="false" />
+					<input id="button_activate" class="button" type="submit" value="Activate"/><br/>
+				</form>
+			</div>
 EndOfHTML;
 	}
 
