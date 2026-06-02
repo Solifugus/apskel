@@ -27,6 +27,7 @@ define('WARNING',  2);
 define('DEBUG',    3);
 define('NOTICE',   4);
 
+#[\AllowDynamicProperties]  // TODO(modernize): declare all properties explicitly and remove this
 class Framework {
 	// Identity object (how request arrived, to where, and settings thereof)
 	public $identity;
@@ -167,14 +168,14 @@ class Framework {
 	
 	public function getUriModule( $uri ) {
 		$module_request = preg_replace( '/\?.*$/', '', $uri );
-		list( $module, $request ) = @explode( '/', $module_request, 2 );
-		return $module;
+		$parts = explode( '/', $module_request, 2 );
+		return $parts[0];
 	}
-	
+
 	public function getUriRequest( $uri ) {
 		$module_request = preg_replace( '/\?.*$/', '', $uri );
-		list( $module, $request ) = @explode( '/', $module_request, 2 );
-		return $request;
+		$parts = explode( '/', $module_request, 2 );
+		return isset( $parts[1] ) ? $parts[1] : '';
 	}
 
 	public function getUriParameters( $uri ) {
@@ -194,7 +195,8 @@ class Framework {
 	// *** Gathers and Prepares all Global Settings
 	public function __construct( $identity ) {
 		ini_set( 'display_errors', 1 );
-		error_reporting( E_ALL );
+		// TODO(modernize): work through the E_DEPRECATED notices (PHP 8.4) and re-enable them.
+		error_reporting( E_ALL & ~E_DEPRECATED );
 		$this->identity = $identity;
 		$this->registration = array(); 
 		$this->determineSessionVariables();
@@ -260,11 +262,9 @@ class Framework {
 
 	// *** Process Web Request to Set Basic Information (but not execute it)
 	protected function determineRequestDetails($param_show = false) {
-		// Remove any slashes to web request ($_REQUEST) parameters that may have been added by PHP
-		if (get_magic_quotes_gpc()) {
-			$_REQUEST = stripAllSlashes($_REQUEST);
-		}
-		
+		// (Magic quotes were removed in PHP 5.4 and the get_magic_quotes_gpc() function
+		//  removed entirely in PHP 8.0, so there are no auto-added slashes to strip here.)
+
 		// Perform Any URI Rewrite Rules
 		// TODO: design and code this feature so don't need mod_rewrite rules..
 
@@ -273,7 +273,7 @@ class Framework {
 			$uri_parameters = explode('/', $this->identity->request_path);
 
 			// Get module name, if in URL
-			if ( count( $uri_parameters > 0 ) ) {
+			if ( count( $uri_parameters ) > 0 ) {
 				$module = $uri_parameters[0];
 			}
 
@@ -873,10 +873,15 @@ class Framework {
 		if (is_array($argMessage)) {
 			$argMessage = print_r($argMessage, true);
 		}
+		$log_message = "$when " . $this->getMessageNature($argNature) . " ($session as $user): {$argMessage}\n";
 		// Open the log and document this web request..
-		try {
-			$fo         = fopen($this->getSetting('log_file'), 'a');
-			$log_message = "$when " . $this->getMessageNature($argNature) . " ($session as $user): {$argMessage}\n";
+		$log_file = $this->getSetting('log_file');
+		if ( empty( $log_file ) ) {
+			// No log file configured: fall back to PHP's error log so we never fatal here.
+			error_log( rtrim( $log_message ) );
+		}
+		else try {
+			$fo         = fopen($log_file, 'a');
 			fputs($fo, "$log_message");
 			fclose($fo);
 		}

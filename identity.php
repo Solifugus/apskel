@@ -85,7 +85,8 @@ class Identity {
 			// Request is from a browser
 			//list($protocol, $other) = explode(':',$_SERVER['SCRIPT_URI'],2);
 			list($protocol, $other) = explode('/',$_SERVER['SERVER_PROTOCOL'],2);
-			$this->request_url = $protocol . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];  
+			$protocol = strtolower($protocol);  // SERVER_PROTOCOL is "HTTP/1.1"; URLs want lowercase "http"
+			$this->request_url = $protocol . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 		}
 		
 		$this->request_protocol = preg_replace('/^([A-Za-z]+):\/\/.*$/',"$1",$this->request_url);
