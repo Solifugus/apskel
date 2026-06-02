@@ -1,4 +1,4 @@
-<?
+<?php
 # File: agent_registration.php
 # 2012-09-12 ... Created.
 

@@ -206,22 +206,71 @@ class Models {
 	}
 
 	// ------------------ Methods for Building SQL ---------------------
-	public function buildSelect( $tables, $fields, $where ) {
-		if( is_array( $fields ) ) {
-			$fields_selectable = '';
-			foreach( $fields as $field ) {
-				$fields_selectable .= "$field, ";
-			}
-			$fields_selectable = trim( $fields_selectable, ', ' );
-		}
-		else {
-			$fields_selectable = $fields;
-		}
+	// ------------------ Safe (parameterized) record helpers ---------------------
+	// These run prepared statements with bound values. Pass plain PHP values
+	// (NOT pre-quoted strings). This is the preferred data-access API; the
+	// build*Sql() string builders further below are legacy and injection-prone.
 
-		$sql = "SELECT $fields_selectable FROM $tables WHERE $where";
-		$results = $this->runSql( $sql );
-		return $results;
+	// Run a SELECT and return the rows. Placeholders in $where are bound from $params.
+	public function buildSelect( $tables, $fields, $where = '', $params = array() ) {
+		$columns = is_array( $fields ) ? implode( ', ', $fields ) : $fields;
+		$sql = "SELECT {$columns} FROM {$tables}";
+		if( $where !== '' && $where !== null ) { $sql .= " WHERE {$where}"; }
+		return $this->framework->runSql( $sql, count( $params ) ? $params : null );
 	}
+
+	// INSERT one row from an associative array of column => value. Returns the new
+	// row's id (RETURNING on pgsql, lastInsertId elsewhere), or null if $id_column is null.
+	public function insertRecord( $table, $fields, $id_column = 'id' ) {
+		$columns      = array_keys( $fields );
+		$placeholders = array();
+		$params       = array();
+		foreach( $columns as $column ) {
+			$placeholders[]       = ":{$column}";
+			$params[":{$column}"] = $fields[$column];
+		}
+		$sql = "INSERT INTO {$table} ( " . implode( ', ', $columns ) . " ) VALUES ( " . implode( ', ', $placeholders ) . " )";
+		if( $id_column !== null && $this->framework->getDatabaseDriver() === 'pgsql' ) {
+			$rows = $this->framework->runSql( $sql . " RETURNING {$id_column}", $params );
+			return ( is_array( $rows ) && count( $rows ) > 0 ) ? $rows[0][$id_column] : null;
+		}
+		$this->framework->runSql( $sql, $params );
+		return ( $id_column === null ) ? null : $this->framework->getLastInsertId( $id_column );
+	}
+
+	// UPDATE rows from an associative array of column => value. Placeholders in
+	// $where are bound from $where_params (kept distinct from the SET values).
+	public function updateRecords( $table, $fields, $where = '', $where_params = array() ) {
+		$assignments = array();
+		$params      = array();
+		foreach( $fields as $column => $value ) {
+			$assignments[]            = "{$column} = :set_{$column}";
+			$params[":set_{$column}"] = $value;
+		}
+		$sql = "UPDATE {$table} SET " . implode( ', ', $assignments );
+		if( $where !== '' && $where !== null ) { $sql .= " WHERE {$where}"; }
+		foreach( $where_params as $key => $value ) { $params[$key] = $value; }
+		return $this->framework->runSql( $sql, $params );
+	}
+
+	// Update matching rows if any exist, else insert a new row. $fields is an
+	// associative array of plain values; $where (with bound $where_params) identifies
+	// existing rows.
+	public function updateElseInsert( $table, $fields, $where = '', $where_params = array() ) {
+		$exists_sql = "SELECT 1 FROM {$table}";
+		if( $where !== '' && $where !== null ) { $exists_sql .= " WHERE {$where}"; }
+		$existing = $this->framework->runSql( $exists_sql, count( $where_params ) ? $where_params : null );
+		if( is_array( $existing ) && count( $existing ) > 0 ) {
+			return $this->updateRecords( $table, $fields, $where, $where_params );
+		}
+		return $this->insertRecord( $table, $fields, null );
+	}
+
+	// ------------------ Legacy SQL string builders (DEPRECATED) ---------------------
+	// WARNING: these interpolate values into SQL and rely on callers pre-quoting
+	// strings (a leading "'" means "quote me"), which is injection-prone. They remain
+	// only for the not-yet-migrated agent module. New code MUST use the parameterized
+	// helpers above (buildSelect/insertRecord/updateRecords/updateElseInsert).
 
 	public function buildUpdateSql( $tables, $fields, $where ) {
 		if( is_array( $fields ) ) {
@@ -279,46 +328,6 @@ class Models {
 		$sql = $this->buildInsertSql( $tables, $fields, $where );
 		$this->framework->runSql( $sql );
 		return $this->framework->getLastInsertId( $id );
-	}
-
-	// Checks if record/s already exist and updates given fields (if exists) or inserts a new record with given fields (if does not exist)
-	// @param $tables -- one or more tables plus any associations (e.g. "accounts a LEFT JOIN transactions t ON a.id = t.account_id")
-	// @param $fields -- associative array of field names and respective values (e.g. ('account_id' => 456, 'description' => 'Bag of Apples', 'sold_on' => '2012-04-30'))
-	// @param $where  -- the where clause to identify if the record/s already exist and/or to update it/them. 
-	public function updateElseInsert( $tables, $fields, $where = '' ) {
-		// Prepare variables..
-		$fields_selectable = '';
-		$fields_updateable = '';
-		$fields_insertable = '';
-		foreach( $fields as $field => $value ) {
-			$fields_selectable .= "$field, ";
-			$fields_updateable .= "$field = $value, ";
-			$fields_insertable .= "$value, ";
-		}
-		$fields_selectable = trim( $fields_selectable, ', ');
-		$fields_updateable = trim( $fields_updateable, ', ');
-		$fields_insertable = trim( $fields_insertable, ', '); 
-
-		// If no WHERE clause then build one..
-		if( $where == '' ) {
-			$where = str_replace( ',', ' AND', $fields_updateable );
-		}
-
-		// See if already there..
-		$sql = "SELECT $fields_selectable FROM $tables WHERE $where";
-		$results = $this->framework->runSql( $sql );
-
-		// If is there, run an update..
-		if( count( $results ) > 0 ) {
-			$sql = "UPDATE $tables SET $fields_updateable WHERE $where";
-			$results = $this->framework->runSql( $sql );
-		}
-		// If not there, run an insert..
-		else {
-			$sql = "INSERT INTO $tables ( $fields_selectable ) VALUES ( $fields_insertable )";
-			$results = $this->framework->runSql( $sql );
-		}
-		return $results;
 	}
 
 } // End of Models class

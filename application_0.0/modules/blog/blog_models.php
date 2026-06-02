@@ -16,20 +16,22 @@ class BlogModels extends Models
 
 public function saveBlog( $user_id, $fields ) {
 	$fields = $this->framework->removeAllBut( array( 'title', 'name', 'description', 'commenting' ), $fields );
-	$fields['ownder_id'] = $user_id;
-	$this->updateElseInsert( 'blog_settings', $fields, "owner_id = $user_id" );
+	$fields['owner_id'] = $user_id;
+	$this->updateElseInsert( 'blog_settings', $fields, 'owner_id = :owner_id', array( ':owner_id' => $user_id ) );
 }
 
 public function getBlog( $user_id ) {
-	$sql = "SELECT * FROM blog_settings WHERE owner_id = $user_id";
-	$results = $this->framework->runSql( $sql );
-	if( $results === null ) { 
-		$results = array();
-		$results['title'] = "{$_SESSION['user_name']}'s Blog";
-		$results['name'] = $_SESSION['user_name'];
-		$results['description'] = "A personal blog by {$_SESSION['user_name']}.";
-		$results['commenting'] = 'Disallowed';
-		$this->saveBlog( $user_id, $results );
+	$results = $this->buildSelect( 'blog_settings', '*', 'owner_id = :owner_id', array( ':owner_id' => $user_id ) );
+	if( empty( $results ) ) {
+		$defaults = array(
+			'title'       => "{$_SESSION['user_name']}'s Blog",
+			'name'        => $_SESSION['user_name'],
+			'description' => "A personal blog by {$_SESSION['user_name']}.",
+			'commenting'  => 'D',  // (D)isallowed -- the commenting column is a single CHAR
+		);
+		$this->saveBlog( $user_id, $defaults );
+		$defaults['owner_id'] = $user_id;
+		return array( $defaults );
 	}
 	return $results;
 }

@@ -705,7 +705,7 @@ function buildModule( $version, $module_name ) {
 	}
 
 	// Build the module registration file
-	$registration  = "<?\n";
+	$registration  = "<?php\n";
 	$registration .= "# File: {$module_name}_registration.php\n";
 	$registration .= "# {$short_when} ... Created.\n";
 	$registration .= "\n";

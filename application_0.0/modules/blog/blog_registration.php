@@ -1,4 +1,4 @@
-<?
+<?php
 # File: blog_registration.php
 # 2012-10-21 ... Created.
 
