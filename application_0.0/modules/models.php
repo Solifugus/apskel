@@ -60,71 +60,91 @@ class Models {
 	}
 
 	public function buildTables( $drop_and_rebuild = false ) {
-		$success  = true;  // initially presume success, but mark as failed if any part fails. 
-		$prefix = $this->framework->getDatabaseName() . '.' . $this->framework->getDatabasePrefix();
-		$tables = $this->framework->getModuleTables();
+		$success = true;  // initially presume success, but mark as failed if any part fails.
+		$prefix  = $this->framework->getDatabasePrefix();  // table-name prefix ('' by default)
+		$driver  = $this->framework->getDatabaseDriver();
+		$tables  = $this->framework->getModuleTables();
 		foreach( $tables as $table => $columns ) {
-			// Drop or else check existence of table..
+			$table_name = $prefix . $table;
+
+			// Drop (optionally) then check existence..
 			if( $drop_and_rebuild === true ) {
-				$sql = "DROP TABLE $prefix$table";
-				$this->framework->runSql( $sql );  // TODO: error trap
+				$this->framework->runSql( "DROP TABLE IF EXISTS {$table_name} CASCADE" );
 				$table_exists = false;
 			}
 			else {
-				$table_exists = isTableExist( $this->framework->getDatabasePrefix . "$table" );	
+				$table_exists = $this->isTableExist( $table_name );
 			}
-	
-			// Does the table exist?
-			if( $table_exists === false ) {
-				// Table does not exist so build it and return:
-				$sql = "CREATE TABLE $prefix$table (";
-				$primary_keys = '';
-				foreach( $columns as $column => $attributes ) {
-					if( isset( $attributes['type'] ) ) { $sql .= " $column " . $attributes['type']; }
-					else {
-						$message = "Column \"$column\" type is not specified in registration for table $prefix$table.";
-						$this->logMessage( $message, CRITICAL );
-						continue; // try to continue with the rest of the columns..
-					}
-					if( isset( $attributes['default'] ) ) { 
-						$value = $this->translateValueForSqlInsert( $attributes['default'] );
-						if( $value === null ) {
-							$success = false;
-							$this->framework->logMessage( "Failed trying to create table: $prefix$table", WARNING );
-							continue;
-						}
-						else { $sql .= " DEFAULT $value"; }
-					}
-					if( isset( $attributes['key'] ) ) {
-						switch( strtolower( $attributes['key'] ) ) {
-							case 'primary':
-								$sql .= " NOT NULL AUTO_INCREMENT "; 
-								$primary_keys .= "$column, ";
-								break;
-						}
-					} // end of key condition..
-					$sql .= ', ';
-				} // end of loop through columns
-				if( $primary_keys !== '' ) {
-					$primary_keys = trim( $primary_keys, ', ' );
-					$sql .= " PRIMARY KEY( $primary_keys ) ";
+
+			// Already there (and not rebuilding): leave it. ALTER/migration is a TODO.
+			if( $table_exists ) { continue; }
+
+			// Build the column definitions.
+			$definitions  = array();
+			$primary_keys = array();
+			foreach( $columns as $column => $attributes ) {
+				$is_primary = isset( $attributes['key'] ) && strtolower( $attributes['key'] ) === 'primary';
+				if( $is_primary ) {
+					// Auto-incrementing primary key (driver-specific).
+					$definitions[]  = "{$column} " . ( $driver === 'pgsql' ? 'SERIAL' : 'INTEGER NOT NULL AUTO_INCREMENT' );
+					$primary_keys[] = $column;
+					continue;
 				}
-				$sql = trim( $sql, ', ' );
-				$sql .= ')';
-				$result = $this->framework->runSql( $sql );
-				if( $result === null ) {
+				if( !isset( $attributes['type'] ) ) {
+					$this->framework->logMessage( "Column \"{$column}\" has no type in registration for table {$table_name}.", CRITICAL );
 					$success = false;
-					$this->framework->logMessage( "Failed trying to create table: $sql", WARNING );
+					continue;
 				}
+				$definitions[] = "{$column} " . $this->normalizeColumnType( $attributes['type'], $driver )
+				               . $this->renderColumnDefault( $attributes );
 			}
-			else 
-			{
-				// Table exists so perform any necessary alterations:
-				print "WORKING..<br/>\n";
-				$sql = "";
+			if( count( $primary_keys ) > 0 ) {
+				$definitions[] = 'PRIMARY KEY (' . implode( ', ', $primary_keys ) . ')';
+			}
+
+			$sql = "CREATE TABLE {$table_name} (\n\t" . implode( ",\n\t", $definitions ) . "\n)";
+			$result = $this->framework->runSql( $sql );
+			if( $result === null ) {
+				$success = false;
+				$this->framework->logMessage( "Failed trying to create table: {$sql}", WARNING );
 			}
 		} // end of loop through tables
 		return $success;
+	}
+
+	// Normalize a registration column type to the target SQL dialect.
+	private function normalizeColumnType( $type, $driver = 'pgsql' ) {
+		$type = trim( $type );
+		if( $driver === 'pgsql' ) {
+			// Postgres has no integer "display widths": INT(11) -> INTEGER, TINYINT(1) -> BOOLEAN, etc.
+			if( preg_match( '/^tinyint\s*\(\s*1\s*\)$/i', $type ) ) { return 'BOOLEAN'; }
+			if( preg_match( '/^big\s*int/i', $type ) )              { return 'BIGINT'; }
+			if( preg_match( '/^small\s*int/i', $type ) )            { return 'SMALLINT'; }
+			if( preg_match( '/^(int|integer|mediumint|tinyint)\s*(\(\s*\d+\s*\))?$/i', $type ) ) { return 'INTEGER'; }
+			if( preg_match( '/^datetime$/i', $type ) )              { return 'TIMESTAMP'; }
+		}
+		return strtoupper( $type );
+	}
+
+	// Render a "DEFAULT ..." clause from a column's registration attributes (or '' if none).
+	private function renderColumnDefault( $attributes ) {
+		if( !array_key_exists( 'default', $attributes ) ) { return ''; }
+		$default = $attributes['default'];
+		// The old registration files use the string 'null'/'NULL' to mean SQL NULL.
+		if( $default === null || ( is_string( $default ) && strtolower( $default ) === 'null' ) ) {
+			return ' DEFAULT NULL';
+		}
+		if( is_bool( $default ) ) { return ' DEFAULT ' . ( $default ? 'TRUE' : 'FALSE' ); }
+		// Booleans are often written as 0/1 in the legacy registrations.
+		$type = isset( $attributes['type'] ) ? strtolower( $attributes['type'] ) : '';
+		if( strpos( $type, 'bool' ) !== false ) {
+			$falsey = ( $default === 0 || $default === '0' || $default === false || $default === '' );
+			return ' DEFAULT ' . ( $falsey ? 'FALSE' : 'TRUE' );
+		}
+		if( is_int( $default ) || is_float( $default ) || ( is_string( $default ) && is_numeric( $default ) ) ) {
+			return " DEFAULT {$default}";
+		}
+		return " DEFAULT '" . str_replace( "'", "''", $default ) . "'";
 	}
 
 	// Tranlsates PHP data value for insertion into a SQL statement, or returns null upon failure
@@ -162,10 +182,19 @@ class Models {
 	}
 
 	private function isTableExist( $table_name, $database_name = null ) {
-		if( $database_name === null ) { $database_name = $this->framework->getDatabaseName(); }
-		$sql = "SELECT table_name FROM information_schema.tables WHERE table_schema = '$database_name' AND table_name = '$table_name'";
-		$results = $this->framework->runSql( $sql );
-		if( count( $results ) > 0 ) { return true; } else { return false; }
+		$driver = $this->framework->getDatabaseDriver();
+		if( $driver === 'pgsql' ) {
+			// In Postgres, tables live in a schema (default 'public'), not the database name.
+			$sql = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = :table_name";
+			$params = array( ':table_name' => $table_name );
+		}
+		else {
+			if( $database_name === null ) { $database_name = $this->framework->getDatabaseName(); }
+			$sql = "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema AND table_name = :table_name";
+			$params = array( ':schema' => $database_name, ':table_name' => $table_name );
+		}
+		$results = $this->framework->runSql( $sql, $params );
+		return is_array( $results ) && count( $results ) > 0;
 	}
 
 	private function getTableDetails( $table_name, $database_name = null ) {

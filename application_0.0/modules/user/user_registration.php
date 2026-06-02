@@ -100,7 +100,7 @@ $tables = array (
 	'users' => array ( 
 		'id'        => array ( 'type' => 'INT(11)',      'key' => 'primary' ),
 		'user_name' => array ( 'type' => 'VARCHAR(15)',  'default' => 'null', 'filter' => null ),
-		'password'  => array ( 'type' => 'VARCHAR(32)',  'default' => 'null', 'filter' => null ),
+		'password'  => array ( 'type' => 'VARCHAR(255)', 'default' => 'null', 'filter' => null ),
 		'surname'   => array ( 'type' => 'VARCHAR(15)',  'default' => 'null', 'filter' => null ),
 		'forename'  => array ( 'type' => 'VARCHAR(15)',  'default' => 'null', 'filter' => null ),
 		'email'     => array ( 'type' => 'VARCHAR(60)',  'default' => 'null', 'filter' => null ),

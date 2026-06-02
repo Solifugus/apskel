@@ -428,15 +428,19 @@ class Framework {
 			$request_is_fatal_reason .= "The \"$module_name\"'s \"$request_name\" request has malformed parameter registrations.";
 			}
 			else {
-				// Collect request parameters according to the registration
+				// Collect request parameters according to the registration.
+				// Values are kept raw here: SQL safety is enforced at the database
+				// boundary via prepared statements (see Framework::runSql), not by
+				// escaping input up front (the old addslashes() approach was both
+				// unsafe and lossy).
 				foreach( $registration['requests'][$request_name]['parameters'] as $parameter ) {
-					if( isset( $_REQUEST[$parameter['name']] ) ) { 
+					if( isset( $_REQUEST[$parameter['name']] ) ) {
 						// Parameter was provided on web request to collect it..
-						$sanitized_parameters[$parameter['name']] = addslashes( $_REQUEST[$parameter['name']] );
+						$sanitized_parameters[$parameter['name']] = $_REQUEST[$parameter['name']];
 					}
 					else {
 						// Parameter was not provided on web request to collect its default value..
-						$sanitized_parameters[$parameter['name']] = addslashes( $parameter['default'] );
+						$sanitized_parameters[$parameter['name']] = $parameter['default'];
 
 						// If required, annotate because the parameter was not provided.
 						if( $parameter['required'] === true ) {
@@ -449,7 +453,7 @@ class Framework {
 
 		// if the "fresh" parameter wasn't provided, add it and assign it as boolean true (for controller/view to know user just arrived here)
 		if( !isset( $_REQUEST['fresh'] ) ) { $sanitized_parameters['fresh'] = true; }
-		else                               { $sanitized_parameters['fresh'] = addslashes( $_REQUEST['fresh'] ); }
+		else                               { $sanitized_parameters['fresh'] = $_REQUEST['fresh']; }
 
 		// Does the module's controllers file actually exist?
 		$controller_file_name = $this->getControllerFileName( $module_name );
@@ -900,7 +904,7 @@ class Framework {
 		# If a disaster then notify administrator(s) by email..
 		if ($argNature == FATAL) {
 			print "A serious system error occured and support staff are being notified.\n";
-			$this->mailAdmin($this->getMessageNature($argNature), $logMessage);
+			$this->mailAdmin($this->getMessageNature($argNature), $log_message);
 		}
 	}
 	
@@ -1117,7 +1121,7 @@ class Framework {
 		else                        { $module = $param_module; }
 
 		// If not loaded from file then load first..
-		if( !isset( $this->registration[$module] ) || !is_array( $this->registration[$module] ) ) { $this->loadModuleRegistration( $param_module ); }
+		if( !isset( $this->registration[$module] ) || !is_array( $this->registration[$module] ) ) { $this->loadModuleRegistration( $module ); }
 		return $this->registration[$module]['requests'];
 	}
 
@@ -1126,8 +1130,8 @@ class Framework {
 		else                        { $module = $param_module; }
 
 		// If not loaded from file then load first..
-		if( !isset( $this->registration[$module] ) || !is_array( $this->registration[$module] ) ) { $this->loadModuleRegistration( $param_module ); }
-		return $this->registration[$module]['tables'];
+		if( !isset( $this->registration[$module] ) || !is_array( $this->registration[$module] ) ) { $this->loadModuleRegistration( $module ); }
+		return isset( $this->registration[$module]['tables'] ) ? $this->registration[$module]['tables'] : array();
 	}
 
 	private function loadModuleRegistration( $param_module ) {
@@ -1147,7 +1151,7 @@ class Framework {
 			if( isset( $tables ) ) {
 				$this->registration[$param_module]['tables'] = $tables;
 			}
-			else { $this->reigstration[$param_module]['tables'] = array(); }
+			else { $this->registration[$param_module]['tables'] = array(); }
 		}
 	}
 	
