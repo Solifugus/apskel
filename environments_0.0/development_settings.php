@@ -9,12 +9,13 @@ $settings = array(
 $databases = array(
 	array(
 		"usage"    => "read_write",
+		"driver"   => "pgsql",
 		"address"  => "localhost",
-		"port"     => "3306",
-		"name"     => "development",
+		"port"     => "5432",
+		"name"     => "apskel_development",
 		"prefix"   => "",
-		"user"     => "master",
-		"password" => "fakeword"	
+		"user"     => "apskel",
+		"password" => "apskel_dev"
 	)
 );
 

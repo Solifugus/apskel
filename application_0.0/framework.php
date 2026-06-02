@@ -131,6 +131,11 @@ class Framework {
 		}
 	}
 
+	// Database Driver (PDO driver name, e.g. 'pgsql', 'mysql', 'sqlite'); defaults to pgsql
+	public function getDatabaseDriver( $id = 0 ) {
+		return isset( $this->identity->databases[$id]['driver'] ) ? $this->identity->databases[$id]['driver'] : 'pgsql';
+	}
+
 	// Database Server Address
 	public function getDatabaseAddress( $id = 0 ) {
 		return $this->identity->databases[$id]['address'];
@@ -138,7 +143,7 @@ class Framework {
 
 	// Database Port Number or Null for Default
 	public function getDatabasePort( $id = 0 ) {
-		return $this->databases[$id]['port'];
+		return isset( $this->identity->databases[$id]['port'] ) ? $this->identity->databases[$id]['port'] : null;
 	}
 
 	// Name of Database in Database Server
@@ -163,7 +168,7 @@ class Framework {
 
 	// How Database May be Used: 'read_write', 'read_only', or 'failover'
 	public function getDatabaseUsage( $id = 0 ) {
-		return $this->databases[$id]['usage'];
+		return $this->identity->databases[$id]['usage'];
 	}
 	
 	public function getUriModule( $uri ) {
@@ -964,42 +969,43 @@ class Framework {
 		if(!$this->database_connection) {
 			$database_id = $this->getIdOfDatabaseFor('read_write'); // TODO: build mechanism to know when to use each database usage type..
 			if( $database_id === null ) {
-				print "No database found to use..<br/>\n";
-				// TODO: log error
+				$this->logMessage( "No read_write database is configured for the {$this->getEnvironment()} environment.", FATAL );
+				print "No database is configured for this environment.<br/>\n";
+				exit(1);
 			}
-			$address  = $this->getDatabaseAddress($database_id);
-			$database = $this->getDatabaseName($database_id);
-			$user     = $this->getDatabaseUser($database_id);
-			$password = $this->getDatabasePassword($database_id);
-			//$this->database_connection = $this->openDatabase($this->getDatabaseAddress($database_id), $this->getDatabaseName($database_id), $this->getDatabaseUser($database_id), $this->getDatabasePassword($database_id));
-			$this->database_connection = $this->openDatabase( $address, $database, $user, $password );
+			$this->database_connection = $this->openDatabase( $database_id );
 		}
 	}
 
 	// *** Run a Query and Return any Result
-	public function runSql( $param_sql, $param_user = null, $param_password = null ) {
+	// When $param_parameters is an array, the SQL is run as a prepared statement with
+	// those values bound (the safe path -- no string interpolation of user data). The
+	// array may be positional (for "?" placeholders) or associative (for ":name" ones).
+	public function runSql( $param_sql, $param_parameters = null ) {
 		$this->ensureDatabaseAccessible();
 
-		// Run the given SQL
+		// Run the given SQL (prepared when parameters are supplied)
 		try {
-			$result = $this->database_connection->query($param_sql);
+			if( is_array( $param_parameters ) ) {
+				$result = $this->database_connection->prepare( $param_sql );
+				$result->execute( $param_parameters );
+			}
+			else {
+				$result = $this->database_connection->query( $param_sql );
+			}
 		} catch(PDOException $error) {
-			$message = "Query failed: $error\n$param_sql";
+			$message = "Query failed: {$error->getMessage()}\n$param_sql";
 			$this->logMessage($message, CRITICAL);
 			return null;
 		}
 
 		// Log the Query
-		// TODO 
+		// TODO
 
-		// Return can be used as an array of rows of associative column names/values
-		if( is_object( $result ) ) {
-			$rows = $result->fetchAll();  
-		}
-		else {
-			$message = "Unable to retrieve results from query: $param_sql";
-			return null;
-		}
+		// Rows for SELECT-like statements; statements with no result set (INSERT/UPDATE/DDL)
+		// return an empty array rather than erroring.
+		try { $rows = $result->fetchAll(); }
+		catch( PDOException $error ) { $rows = array(); }
 		return $rows;
 	}
 
@@ -1026,111 +1032,54 @@ class Framework {
 	}
 	
 
-	// *** Open the database or report failure to do so
-	public function openDatabase( $param_database_address, $param_database_name, $param_database_user, $param_database_password ) {
-		# Try to open a database connection
+	// Build a PDO DSN for the given database registration (driver-agnostic).
+	private function buildDsn( $id = 0 ) {
+		$driver  = $this->getDatabaseDriver( $id );
+		$address = $this->getDatabaseAddress( $id );
+		$port    = $this->getDatabasePort( $id );
+		$name    = $this->getDatabaseName( $id );
+		switch( $driver ) {
+			case 'sqlite':
+				// For sqlite, "name" is a file path (or ":memory:").
+				return "sqlite:{$name}";
+			case 'pgsql':
+			case 'mysql':
+			default:
+				$dsn = "{$driver}:host={$address};dbname={$name}";
+				if( !empty( $port ) ) { $dsn .= ";port={$port}"; }
+				return $dsn;
+		}
+	}
+
+	// *** Open the database (PDO) or report failure and stop.
+	// Provisioning a missing database/role is a setup-time concern (see tools/configure),
+	// not something to attempt from inside a request, so failures here are fatal.
+	public function openDatabase( $id = 0 ) {
+		$dsn      = $this->buildDsn( $id );
+		$driver   = $this->getDatabaseDriver( $id );
+		$user     = $this->getDatabaseUser( $id );
+		$password = $this->getDatabasePassword( $id );
+
+		$options = array(
+			PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+			PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+		);
+		// Real (non-emulated) prepared statements where the driver supports the toggle.
+		if( $driver === 'mysql' ) { $options[ PDO::ATTR_EMULATE_PREPARES ] = false; }
+
 		try {
-			$db = new PDO("mysql:host=$param_database_address;dbname=$param_database_name", $param_database_user, $param_database_password);
+			$db = new PDO( $dsn, $user, $password, $options );
 		}
 		catch (PDOException $errorObject) {
-			# If a priviledged user/password was provided, retry with those..
-			// TODO: Modify for new way -- probably use protected properties 'priviledged_user' and 'privileged_password'
-			if (isset($_REQUEST['systemrequest']) && strtolower($_REQUEST['systemrequest']) == 'create database') {
-				# were we given user and password parameters?
-				if (isset($_REQUEST['user']) && isset($_REQUEST['password'])) {
-					$priviledged_user     = $_REQUEST['user']; # to try in place of environment's user
-					$priviledged_password = $_REQUEST['password']; # to try in place of environment's password
-					unset($_REQUEST['systemrequest']); # ensure we don't cause an infinite recursive loop              
-					$db = $this->openDatabase($param_database_address, $param_databaseName, $priviledged_user, $priviledged_password);
-					if ($db !== null) {
-						return $db;
-					}
-				}
-				
-				# We were not given the user and password parameters, along with the 'setup' request.
-				else {
-					$message = "A database setup was requested for {$this->settings->getApplication()}'s {$this->settings->getEnvironment()} environment, but a user and password were not provided.";
-					$this->logMessage($message, WARNING);
-				}
-			}
-			
-			# Log failure to connect to database
-			$errorMessage = $errorObject->getmessage();
-			$this->logMessage("The {$this->getEnvironment()} environment failed to open a database connection: $errorMessage\n", WARNING);
-			
-			# If database unknown, try to create it
-			if (stristr($errorMessage, 'Unknown database')) {
-				# Attempt raw database connection with no database specified
-				$wasError = false;
-				try {
-					$db = new PDO("mysql:host=$param_database_address", $param_database_user, $param_database_password);
-				}
-				catch (PDOException $errorObject) {
-					$wasError     = true;
-					$errorMessage = $errorObject->getmessage();
-					$message      = "Attempt to connect to {$this->getApplication()}'s {$this->getEnvironment()} environment's database server without specifying a database failed: $errorMessage";
-					print "$message\n";
-					$this->logMessage($message, WARNING);
-				}
-				if (!$wasError) {
-					# Successful connection to database, proceed to run SQL create statements..
-					$message = "Connecting to the {$this->getApplication()}'s {$this->getEnvironment()} environment database server (not specifying a database) succeeded.\n";
-					$this->logMessage($message, NOTICE);
-					$wasError = false;
-					try {
-						$stmt = $db->prepare( $this->getCreateDatabaseSql( $param_database_name, $param_database_user, $param_database_password ) ); 
-						$stmt->execute();
-					}
-					catch (PDOException $errorObject) {
-						$wasError          = true;
-						$params['message'] = "Creating an initial database for {$this->getApplication()}'s {$this->getEnvironment()} environment failed: " . $errorObject->getmessage() . "\n";
-						$this->logMessage($params['message'], FATAL);
-					}
-					if (!$wasError) {
-						$message .= "Creation of the database for the {$this->getApplication()}'s {$this->getEnvironment()} environment was successful.\n";
-						$this->logMessage($message, NOTICE);
-						return $db;
-					}
-					# Report Failure to auto-create database and Request a privileged user/password
-					# TODO
-				} // end !$wasError
-			}
-			
-			# If access denied for user, request a priviledged user/password and exit (Over CLI or HTTPS only)
-			elseif (stristr($errorMessage, 'Access denied for user')) {
-				# If running from command line, just prompt the user for priviledged user/password and try to initialize..
-				# TODO
-				
-				# If running from a browser, provide a web form to return priviledged user/password via HTTPS
-				# TODO
-				exit(0);
-			}
-			
-			# If database connection failed for unrecoverable reason, report fatal error and exit
-			else {
-				$message = "A fatal error occured trying to connect to {$this->getApplication()}'s {$this->getEnvironment()} environment: $errorMessage.\n";
-				$this->logMessage($message, FATAL);
-				print "$message<br/>Support staff are being notified.";
-				exit(0);
-			}
-		} // end catch
-		
-		# A database connection is properly established
+			$message = "Failed to connect to the {$this->getEnvironment()} environment database ({$dsn}): " . $errorObject->getMessage();
+			$this->logMessage( $message, FATAL );
+			print "A database connection could not be established.<br/>\n";
+			exit(1);
+		}
+
 		return $db;
 	}
-	
-	// Get Create Database SQL for the User Registered for This Database
-	private function getCreateDatabaseSQL( $param_database_name, $param_database_user, $param_database_password ) {
-		$web_server_address      = 'localhost'; # TODO: determine this dynamically..  and how to make this apply to all frontend webservers?
-		
-		return <<<EndOfSQL
-  
-			CREATE DATABASE $param_database_name;
-  
-			GRANT ALL PRIVILEGES ON $param_database_name.* TO $param_database_user@$web_server_address IDENTIFIED BY '$param_database_password';
-EndOfSQL;
-	}
-	
+
 	// Get Number of Rows in Query
 	public function getNumberOfRows($argSql) {
 		// TODO
