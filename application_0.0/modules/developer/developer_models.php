@@ -692,37 +692,110 @@ class AgentModels extends Models {
 		$conditions = trim( $conditions );
 		if( $conditions == '' ) { return true; }
 
-		// Translate to PHP 
-		foreach( $this->conditionals as $condition ) {
-			$conditions = preg_replace( $condition['regex_pattern'], $condition['php_function'], $conditions );
+		// Resolve every registered conditional call to a boolean literal (1 or 0)
+		// by dispatching to its is* method, then evaluate the residual boolean
+		// expression with a recursive-descent parser. This replaces the old
+		// eval() of attacker-controllable condition text. See agent_models.php
+		// for the full rationale (this module is an accidental copy of it).
+		foreach( $this->conditionals as $conditional ) {
+			$conditions = preg_replace_callback(
+				$conditional['regex_pattern'],
+				function( $matches ) use ( $conditional, $wildcards ) {
+					return $this->callConditional( $conditional['php_function'], $matches, $wildcards ) ? '1' : '0';
+				},
+				$conditions
+			);
 		}
-		$quoted = false;
-		for( $position = 0; $position <= strlen( $conditions ); $position++ ) {
-			if( substr( $conditions, $position, 1) == '"' ) {
-				if( $quoted ) { $quoted = false; }
-				else          { $quoted = true; }
+
+		return $this->evaluateBoolean( $conditions );
+	}
+
+	private function callConditional( $template, $matches, $wildcards ) {
+		if( !preg_match( '/\$this->(\w+)\s*\(/', $template, $name ) ) { return false; }
+		$method = $name[1];
+		if( !method_exists( $this, $method ) ) { return false; }
+		$arguments = array();
+		for( $index = 1; $index < count( $matches ); $index++ ) {
+			$arguments[] = $matches[ $index ];
+		}
+		$arguments[] = $wildcards;
+		return (bool) call_user_func_array( array( $this, $method ), $arguments );
+	}
+
+	private function evaluateBoolean( $expression ) {
+		$expression = preg_replace( '/\bnot\b/i', ' ! ',  $expression );
+		$expression = preg_replace( '/\band\b/i', ' && ', $expression );
+		$expression = preg_replace( '/\bor\b/i',  ' || ', $expression );
+
+		if( preg_match( '/[^01!&|()\s]/', $expression ) ) {
+			if( isset( $this->framework ) ) {
+				$this->framework->logMessage( "Rejected unsafe agent condition: {$expression}", WARNING );
+			}
+			return false;
+		}
+
+		$tokens = array();
+		$length = strlen( $expression );
+		for( $index = 0; $index < $length; $index++ ) {
+			$character = $expression[ $index ];
+			if( ctype_space( $character ) ) { continue; }
+			if( $character === '&' || $character === '|' ) {
+				$next = ( $index + 1 < $length ) ? $expression[ $index + 1 ] : '';
+				if( $character !== $next ) { return false; }
+				$tokens[] = $character . $character;
+				$index++;
 				continue;
 			}
-			if( !$quoted ) {
-				if( strtolower( substr( $conditions, $position, 3 ) ) == 'and' ) { 
-					$conditions = substr( $conditions, 0, $position ) . '&&' . substr( $conditions, $position + 3 );      
-				}
-				if( strtolower( substr( $conditions, $position, 2 ) ) == 'or' ) { 
-					$conditions = substr( $conditions, 0, $position ) . '||' . substr( $conditions, $position + 2 );      
-				}
-				if( strtolower( substr( $conditions, $position, 3 ) ) == 'not' ) { 
-					$conditions = substr( $conditions, 0, $position ) . '!' . substr( $conditions, $position + 3 );      
-				}
-			}
+			$tokens[] = $character;
 		}
 
-		// Ensure only allowed code is included: &&, ||, !, (, ), and the is* functions
-		// TODO: WORKING..
+		$position = 0;
+		$value = $this->parseBooleanOr( $tokens, $position );
+		if( $position !== count( $tokens ) ) { return false; }
+		return $value;
+	}
 
-		// Evaluate and return the result 
-		$conditions = "\$result = {$conditions};\n";
-		eval( $conditions );
-		return $result;
+	private function parseBooleanOr( $tokens, &$position ) {
+		$value = $this->parseBooleanAnd( $tokens, $position );
+		while( isset( $tokens[ $position ] ) && $tokens[ $position ] === '||' ) {
+			$position++;
+			$right = $this->parseBooleanAnd( $tokens, $position );
+			$value = $value || $right;
+		}
+		return $value;
+	}
+
+	private function parseBooleanAnd( $tokens, &$position ) {
+		$value = $this->parseBooleanUnary( $tokens, $position );
+		while( isset( $tokens[ $position ] ) && $tokens[ $position ] === '&&' ) {
+			$position++;
+			$right = $this->parseBooleanUnary( $tokens, $position );
+			$value = $value && $right;
+		}
+		return $value;
+	}
+
+	private function parseBooleanUnary( $tokens, &$position ) {
+		if( isset( $tokens[ $position ] ) && $tokens[ $position ] === '!' ) {
+			$position++;
+			return ! $this->parseBooleanUnary( $tokens, $position );
+		}
+		return $this->parseBooleanPrimary( $tokens, $position );
+	}
+
+	private function parseBooleanPrimary( $tokens, &$position ) {
+		if( !isset( $tokens[ $position ] ) ) { return false; }
+		$token = $tokens[ $position ];
+		if( $token === '1' ) { $position++; return true; }
+		if( $token === '0' ) { $position++; return false; }
+		if( $token === '(' ) {
+			$position++;
+			$value = $this->parseBooleanOr( $tokens, $position );
+			if( isset( $tokens[ $position ] ) && $tokens[ $position ] === ')' ) { $position++; }
+			return $value;
+		}
+		$position++;
+		return false;
 	}
 
 	// (is {=|>|<}n "object")

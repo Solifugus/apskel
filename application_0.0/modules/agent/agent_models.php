@@ -692,37 +692,128 @@ class AgentModels extends Models {
 		$conditions = trim( $conditions );
 		if( $conditions == '' ) { return true; }
 
-		// Translate to PHP 
-		foreach( $this->conditionals as $condition ) {
-			$conditions = preg_replace( $condition['regex_pattern'], $condition['php_function'], $conditions );
+		// Resolve every registered conditional call -- (is .. ".."), (isall ..),
+		// (isany ..), (iscan ..) -- to a boolean literal (1 or 0) by dispatching
+		// to its is* method. Only text that matches a registered pattern is ever
+		// executed; anything else is left in place and rejected below. This
+		// replaces the old eval() of attacker-controllable condition text, which
+		// allowed arbitrary PHP execution from the agent_reactions.conditions
+		// field (editable via the save_reaction request).
+		//
+		// Note: unlike the old eval(), all conditionals are evaluated eagerly
+		// (no &&/|| short-circuit). The is* predicates are side-effect-free
+		// queries, so this only changes performance, not behavior.
+		foreach( $this->conditionals as $conditional ) {
+			$conditions = preg_replace_callback(
+				$conditional['regex_pattern'],
+				function( $matches ) use ( $conditional, $wildcards ) {
+					return $this->callConditional( $conditional['php_function'], $matches, $wildcards ) ? '1' : '0';
+				},
+				$conditions
+			);
 		}
-		$quoted = false;
-		for( $position = 0; $position <= strlen( $conditions ); $position++ ) {
-			if( substr( $conditions, $position, 1) == '"' ) {
-				if( $quoted ) { $quoted = false; }
-				else          { $quoted = true; }
+
+		// What remains must be a pure boolean expression over the literals 1/0,
+		// the keywords and/or/not, parentheses and whitespace. Evaluate it with a
+		// recursive-descent parser -- never eval().
+		return $this->evaluateBoolean( $conditions );
+	}
+
+	// Dispatch a single matched conditional to its is* method. The method name is
+	// read from the registered php_function template; the regex capture groups
+	// become the leading arguments (in order) followed by $wildcards. This is the
+	// only place a condition fragment is turned into a call, and it can only call
+	// a method that actually exists on this object.
+	private function callConditional( $template, $matches, $wildcards ) {
+		if( !preg_match( '/\$this->(\w+)\s*\(/', $template, $name ) ) { return false; }
+		$method = $name[1];
+		if( !method_exists( $this, $method ) ) { return false; }
+		$arguments = array();
+		for( $index = 1; $index < count( $matches ); $index++ ) {
+			$arguments[] = $matches[ $index ];
+		}
+		$arguments[] = $wildcards;
+		return (bool) call_user_func_array( array( $this, $method ), $arguments );
+	}
+
+	// Safely evaluate a boolean expression containing only 1/0, and/or/not,
+	// parentheses and whitespace. Returns false (and logs) on anything outside
+	// that grammar, so unrecognized condition text can never execute.
+	private function evaluateBoolean( $expression ) {
+		$expression = preg_replace( '/\bnot\b/i', ' ! ',  $expression );
+		$expression = preg_replace( '/\band\b/i', ' && ', $expression );
+		$expression = preg_replace( '/\bor\b/i',  ' || ', $expression );
+
+		if( preg_match( '/[^01!&|()\s]/', $expression ) ) {
+			if( isset( $this->framework ) ) {
+				$this->framework->logMessage( "Rejected unsafe agent condition: {$expression}", WARNING );
+			}
+			return false;
+		}
+
+		// Tokenize into: 1 0 ! ( ) && ||
+		$tokens = array();
+		$length = strlen( $expression );
+		for( $index = 0; $index < $length; $index++ ) {
+			$character = $expression[ $index ];
+			if( ctype_space( $character ) ) { continue; }
+			if( $character === '&' || $character === '|' ) {
+				$next = ( $index + 1 < $length ) ? $expression[ $index + 1 ] : '';
+				if( $character !== $next ) { return false; }  // lone & or | is invalid
+				$tokens[] = $character . $character;
+				$index++;
 				continue;
 			}
-			if( !$quoted ) {
-				if( strtolower( substr( $conditions, $position, 3 ) ) == 'and' ) { 
-					$conditions = substr( $conditions, 0, $position ) . '&&' . substr( $conditions, $position + 3 );      
-				}
-				if( strtolower( substr( $conditions, $position, 2 ) ) == 'or' ) { 
-					$conditions = substr( $conditions, 0, $position ) . '||' . substr( $conditions, $position + 2 );      
-				}
-				if( strtolower( substr( $conditions, $position, 3 ) ) == 'not' ) { 
-					$conditions = substr( $conditions, 0, $position ) . '!' . substr( $conditions, $position + 3 );      
-				}
-			}
+			$tokens[] = $character;  // one of 0 1 ! ( )
 		}
 
-		// Ensure only allowed code is included: &&, ||, !, (, ), and the is* functions
-		// TODO: WORKING..
+		$position = 0;
+		$value = $this->parseBooleanOr( $tokens, $position );
+		if( $position !== count( $tokens ) ) { return false; }  // trailing garbage
+		return $value;
+	}
 
-		// Evaluate and return the result 
-		$conditions = "\$result = {$conditions};\n";
-		eval( $conditions );
-		return $result;
+	private function parseBooleanOr( $tokens, &$position ) {
+		$value = $this->parseBooleanAnd( $tokens, $position );
+		while( isset( $tokens[ $position ] ) && $tokens[ $position ] === '||' ) {
+			$position++;
+			$right = $this->parseBooleanAnd( $tokens, $position );
+			$value = $value || $right;
+		}
+		return $value;
+	}
+
+	private function parseBooleanAnd( $tokens, &$position ) {
+		$value = $this->parseBooleanUnary( $tokens, $position );
+		while( isset( $tokens[ $position ] ) && $tokens[ $position ] === '&&' ) {
+			$position++;
+			$right = $this->parseBooleanUnary( $tokens, $position );
+			$value = $value && $right;
+		}
+		return $value;
+	}
+
+	private function parseBooleanUnary( $tokens, &$position ) {
+		if( isset( $tokens[ $position ] ) && $tokens[ $position ] === '!' ) {
+			$position++;
+			return ! $this->parseBooleanUnary( $tokens, $position );
+		}
+		return $this->parseBooleanPrimary( $tokens, $position );
+	}
+
+	private function parseBooleanPrimary( $tokens, &$position ) {
+		if( !isset( $tokens[ $position ] ) ) { return false; }
+		$token = $tokens[ $position ];
+		if( $token === '1' ) { $position++; return true; }
+		if( $token === '0' ) { $position++; return false; }
+		if( $token === '(' ) {
+			$position++;
+			$value = $this->parseBooleanOr( $tokens, $position );
+			if( isset( $tokens[ $position ] ) && $tokens[ $position ] === ')' ) { $position++; }
+			return $value;
+		}
+		$position++;  // unexpected token; consume and treat as false
+		return false;
 	}
 
 	// (is {=|>|<}n "object")
