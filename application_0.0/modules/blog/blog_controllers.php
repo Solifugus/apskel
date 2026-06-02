@@ -120,7 +120,12 @@ class BlogControllers extends Controllers
 			return $this->framework->serviceRequest( 'user', 'login', $param );
 		}
 		else {
-			$this->models->saveBlog( $_SESSION['user_id'], $param );
+			// Only persist on an actual form submission; a plain GET carries the
+			// registration defaults (blank title/name, etc.) and would otherwise
+			// overwrite the saved settings just by viewing the page.
+			if( $this->framework->isFormSubmission() ) {
+				$this->models->saveBlog( $_SESSION['user_id'], $param );
+			}
 			$blog = $this->models->getBlog( $_SESSION['user_id'] );
 			$format = array( 'format' => 'template', 'template_file' => 'manage.html' );
 		}

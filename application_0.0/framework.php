@@ -633,6 +633,17 @@ class Framework {
 	// True if the current main HTTP request is allowed to proceed under CSRF
 	// rules. Safe methods (GET/HEAD/OPTIONS) and non-HTTP protocols (CLI) are
 	// exempt; every other method must present the session's token, either as the
+	// True when the current request is a state-changing form submission (an HTTP POST,
+	// PUT, PATCH or DELETE) rather than a plain view (GET/HEAD) or a CLI invocation.
+	// Controllers use this to avoid persisting on a fresh page load -- on a GET the
+	// framework fills in each parameter's registration default, which would otherwise
+	// overwrite stored data with blanks.
+	public function isFormSubmission() {
+		if ( PHP_SAPI === 'cli' ) { return false; }
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( $_SERVER['REQUEST_METHOD'] ) : 'GET';
+		return in_array( $method, array( 'POST', 'PUT', 'PATCH', 'DELETE' ), true );
+	}
+
 	// POSTed csrf_token field or an X-CSRF-Token header. Read from $_POST/headers
 	// (never $_REQUEST, which the router merges URL path/query params into).
 	protected function isCsrfValid() {
