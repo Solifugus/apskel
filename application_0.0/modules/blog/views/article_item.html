@@ -1,0 +1,11 @@
+<!-- Single article block. Repeated once per row by the {{articles:article_item.html}}
+     sub-template loop in view.html. All fields are pre-escaped by the controller. -->
+<div class="blog_article" id="article_{{id}}">
+	<span class="article_title minor_title">{{title}}</span><br/>
+	<span class="article_byline">by {{author_name}} on {{publish}}</span>
+	<span class="article_tags"> &mdash; {{tags}}</span>
+	<hr/>
+	<div class="article_body">{{article}}</div>
+	<div class="article_actions"><a href="{{@link}}/edit/id={{id}}">Edit</a></div>
+	<br/>
+</div>
