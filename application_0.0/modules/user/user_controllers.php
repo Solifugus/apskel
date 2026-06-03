@@ -220,45 +220,61 @@ class UserControllers extends Controllers {
 		if( !isset( $param['active'] ) )    { $param['active']    = ''; }
 		if( !isset( $param['notes'] ) )     { $param['notes']     = ''; }
 
-		$authorized = false;
-		if( ( isset( $param['user_name'] ) && $this->models->isSuperUser() ) ) {
-			// A super user is requesting a specified user's profile..
-			$authorized = true;
-		}
-		elseif( isset( $_SESSION['user_name'] ) ) {
-			if( isset( $param['user_name'] ) && $param['user_name'] > '' && $param['user_name'] != $_SESSION['user_name']) {
-				// A non-super user is requesting someone else's profile..
-				$param['warnings'] .= "You are not authorized to access \"{$param['user_name']}\"'s profile. ";
-			}
-			else {
-				// The logged in user is requesting his own profile.. 
-				$authorized = true;
-				$param['user_name'] = $_SESSION['user_name'];
-			}
-		}
-		else {
-			// User is not even logged in
-			$param['warnings'] .= 'You are not currently logged in and therefore cannot view any user profile.';
+		// Determine login state. NOTE: the framework seeds $_SESSION['user_name']=''
+		// and user_id=null for every anonymous session (framework.php), so isset()
+		// alone is NOT a valid "is logged in" test -- check for a real, non-null
+		// user_id (the same basis isSuperUser() uses).
+		$logged_in = isset( $_SESSION['user_id'] ) && $_SESSION['user_id'] !== null;
+		$requested = trim( (string) $param['user_name'] );  // a specific target, if any
+
+		if( !$logged_in ) {
+			// Anonymous visitors cannot view any profile; send them to login.
+			$param['warnings'] .= 'You are not currently logged in and therefore cannot view any user profile. ';
 			return $this->views->composeLogin( $param );
 		}
 
+		$authorized = false;
+		if( $requested !== '' && $requested != $_SESSION['user_name'] ) {
+			// A different user's profile was requested -- only a super user may view it.
+			if( $this->models->isSuperUser() ) {
+				$authorized = true;
+				$param['user_name'] = $requested;
+			}
+			else {
+				$param['warnings'] .= "You are not authorized to access \"{$requested}\"'s profile. ";
+			}
+		}
+		else {
+			// The logged-in user is viewing/editing their own profile.
+			$authorized = true;
+			$param['user_name'] = $_SESSION['user_name'];
+		}
+
 		if( $authorized ) {
-			if( $param['fresh'] !== true ) {
+			// Only persist on an actual form submission; a plain GET carries the blank
+			// registration defaults and would otherwise wipe the saved profile just by
+			// viewing the page (same class of bug as blog manage).
+			if( $param['fresh'] !== true && $this->framework->isFormSubmission() ) {
 				// TODO: some validation here..
 				$this->models->saveUserDetails( $param );
 				$param['messages'] = 'Changes were successfully saved.';
 			}
 			$details = $this->models->getUserDetails( $param['user_name'] );
 			//$this->framework->showDebug( $details );
-			$param['email']     = $details[0]['email'];
-			$param['surname']   = $details[0]['surname'];
-			$param['forename']  = $details[0]['forename'];
-			$param['super']     = $details[0]['super'];
-			$param['active']    = $details[0]['active'];
-			$param['notes']     = $details[0]['notes'];
+			if( is_array( $details ) && isset( $details[0] ) ) {
+				$param['email']     = $details[0]['email'];
+				$param['surname']   = $details[0]['surname'];
+				$param['forename']  = $details[0]['forename'];
+				$param['super']     = $details[0]['super'];
+				$param['active']    = $details[0]['active'];
+				$param['notes']     = $details[0]['notes'];
+			}
+			else {
+				$param['warnings'] .= 'That user profile could not be found. ';
+			}
 			$format = array( 'format' => 'template', 'template_file' => 'edit.html' );
 			return array( $param, $format );
-		} 
+		}
 		else {
 			// Present not authorized warning, wait 5 seconds, and return to previous URL 
 			$previous_url = $_SERVER['HTTP_REFERER']; 
