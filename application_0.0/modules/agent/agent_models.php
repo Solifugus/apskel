@@ -192,43 +192,37 @@ class AgentModels extends Models {
 
 			foreach($xml->meaning as $meaning) {
 				$effectiveLength = $this->getLengthOfRecognizer($meaning['recognizer']);
-				//$sql = 'INSERT INTO agent_meanings ( recognizer, length, agent ) VALUES ( ' . $framework->quote($meaning['recognizer']) . ",{$effectiveLength}," . $argDb->quote($agent) . ');';
+				// Plain values, bound by insertRecord -- no manual quoting/concatenation.
 				$fields = array();
-				$fields['recognizer'] = "'{$meaning['recognizer']}'";
+				$fields['recognizer'] = (string) $meaning['recognizer'];
 				$fields['length']     = $effectiveLength;
-				if( isset( $meaning['paradigm'] ) ) { $fields['paradigm'] = $this->framework->mapToValue( $meaning['paradigm'], $this->paradigm_mappings, 'N' ); }
-				else { $fields['paradigm'] = "N"; }
-				$fields['paradigm'] =  "'{$fields['paradigm']}'";
-				if( isset( $meaning['comparison'] ) ) { $fields['comparison'] = $this->framework->mapToValue( $meaning['comparison'], $this->paradigm_mappings, 'F' ); }
-				else { $fields['comparison'] = "F"; }
-				$fields['comparison'] =  "'{$fields['comparison']}'";
-				$sql = $this->buildInsertSql( 'agent_meanings', $fields );
-				$affected = $this->framework->runSql($sql);
-				if($affected == 0) {
-					$warnings .=  "Meaning failed to insert: {$sql}<br/>\n"; 
-					print "$warnings";
+				if( isset( $meaning['paradigm'] ) ) { $fields['paradigm'] = $this->framework->mapToValue( (string) $meaning['paradigm'], $this->paradigm_mappings, 'N' ); }
+				else { $fields['paradigm'] = 'N'; }
+				if( isset( $meaning['comparison'] ) ) { $fields['comparison'] = $this->framework->mapToValue( (string) $meaning['comparison'], $this->paradigm_mappings, 'F' ); }
+				else { $fields['comparison'] = 'F'; }
+				$meaning_id = $this->insertRecord( 'agent_meanings', $fields, 'id' );
+				if( $meaning_id === null ) {
+					$warnings .= 'Meaning failed to insert: ' . htmlspecialchars( $fields['recognizer'] ) . "<br/>\n";
 					// TODO: log this
-					continue; 
+					continue;
 				}
-				$meaning_id = $this->framework->getLastInsertId('id');
-				$fields = array();
 				foreach($meaning->reaction as $reaction) {
-					//$sql = "INSERT INTO agent_reactions ( meaning_id, priority, conditions, actions, functional ) VALUES ($meaning_id," . $reaction['priority'] . ',' .  $this->framework->quoteForDatabase( $this->framework->trimLines( $reaction['condition'] ) ) . ',' . $this->framework->quoteForDatabase( $this->framework->trimLines( $reaction ) ) . ',' . $this->framework->quoteForDatabase( $reaction['functional'] ) . ' )';
-					$fields['meaning_id'] = $meaning_id;
-					$fields['priority']   = ( isset( $reaction['priority'] ) && is_numeric( $reaction['priority'] ) ) ? $reaction['priority'] : 0;
-					$fields['conditions'] = "'" . $this->framework->trimLines( $reaction['condition'] ) . "'";
-					$fields['actions']    = "'" . trim( $this->framework->trimLines( $reaction ), "\n" ) . "'";
-					$fields['functional'] = "'" . $reaction['functional'] . "'";
+					$reaction_fields = array(
+						'meaning_id' => $meaning_id,
+						'priority'   => ( isset( $reaction['priority'] ) && is_numeric( (string) $reaction['priority'] ) ) ? (int) $reaction['priority'] : 0,
+						'conditions' => $this->framework->trimLines( $reaction['condition'] ),
+						'actions'    => trim( $this->framework->trimLines( $reaction ), "\n" ),
+						'functional' => (string) $reaction['functional'],
+					);
 					if( isset( $reaction['reaction_id'] ) ) {
-						$fields['reaction_id'] = $reaction['reaction_id'];
-						$this->insertElseUpdate( 'agent_reactions', $fields, "reaction_id = {$fields['reaction_id']}" );
+						$reaction_id = (string) $reaction['reaction_id'];
+						$this->updateElseInsert( 'agent_reactions', $reaction_fields, 'reaction_id = :where_rid', array( ':where_rid' => $reaction_id ) );
 						// TODO: Some kind of error reporting here.. like down below..
 					}
 					else {
-						$sql = $this->buildInsertSql( 'agent_reactions', $fields );
-						$affected = $this->framework->runSql($sql);
-						if($affected == 0) {
-							$warnings .= "Reaction failed to insert: {$sql}<br/>\n";
+						$new_id = $this->insertRecord( 'agent_reactions', $reaction_fields, 'id' );
+						if( $new_id === null ) {
+							$warnings .= 'Reaction failed to insert under meaning ' . htmlspecialchars( $fields['recognizer'] ) . "<br/>\n";
 							// TODO: log this
 							continue;
 						}
@@ -251,8 +245,10 @@ class AgentModels extends Models {
 			if( isset( $meaning['comparison'] ) ) { $comparison = $this->framework->mapToKey( $meaning['comparison'], $this->comparison_mappings, 'Full' ); }
 			else { $comparison = "Full"; }
 			$xml .= "\t<meaning recognizer=\"{$meaning['recognizer']}\" comparison=\"{$comparison}\" paradigm=\"{$paradigm}\">\n";
-			$sql = "SELECT * FROM agent_reactions WHERE meaning_id = {$meaning['id']}";
-			$reactions = $this->framework->runSql( $sql );
+			$reactions = $this->framework->runSql(
+				'SELECT * FROM agent_reactions WHERE meaning_id = :meaning_id',
+				array( ':meaning_id' => $meaning['id'] )
+			);
 			foreach( $reactions as $reaction ) {
 				$conditions = htmlentities( $reaction['conditions'] );
 				$xml .= "\t\t<reaction priority=\"{$reaction['priority']}\" functional=\"{$reaction['functional']}\" condition=\"{$conditions}\">\n";
@@ -268,54 +264,54 @@ class AgentModels extends Models {
 
 	// Save Topic
 	public function saveTopic( $fields ) {
-		$fields['title']       = $this->framework->quoteForDatabase( $fields['title'] );
-		$fields['description'] = $this->framework->quoteForDatabase( $fields['description'] );
-		$fields['actions']     = $this->framework->quoteForDatabase( $this->sanitizeActions( stripslashes( $fields['actions'] ) ) );
-		$this->updateElseInsert( 'agent_topics', $fields, "title = {$fields['title']}" );
+		// Values are kept as plain PHP values and bound by updateElseInsert -- no
+		// manual quoting (which was injection-prone).
+		$fields['actions'] = $this->sanitizeActions( stripslashes( $fields['actions'] ) );
+		$this->updateElseInsert( 'agent_topics', $fields, 'title = :where_title', array( ':where_title' => $fields['title'] ) );
 		// TODO: get and return the record's ID; also log this..
 	}
 
 	// Adds a new meaning, as identified by recognizer
 	public function saveMeaning( $fields ) {
-		$warnings = '';
+		$warnings   = '';
+		$meaning_id = null;
 		if( isset( $fields['recognizer'] ) ) {
 			$fields['recognizer'] = stripslashes( $fields['recognizer'] );
 			$fields['length'] = $this->getLengthOfRecognizer( $fields['recognizer'] );
 			if( !isset( $fields['meaning_id'] ) || $fields['meaning_id'] == '' ) {
-				$recognizer = $this->framework->quoteForDatabase( $fields['recognizer'] );
-				$sql = "SELECT id AS meaning_id FROM agent_meanings WHERE recognizer = {$recognizer}";
-				$results = $this->framework->runSql( $sql );
-				if( count( $results ) > 0 ) { $fields['meaning_id'] = $results[0]['meaning_id']; }
+				// Look up an existing meaning by recognizer (bound parameter).
+				$results = $this->framework->runSql(
+					'SELECT id AS meaning_id FROM agent_meanings WHERE recognizer = :recognizer',
+					array( ':recognizer' => $fields['recognizer'] )
+				);
+				if( is_array( $results ) && count( $results ) > 0 ) { $fields['meaning_id'] = $results[0]['meaning_id']; }
 			}
 		}
 		if( !isset( $fields['paradigm'] ) ) {  $fields['paradigm'] = ''; }
-		$fields['paradigm']   = $this->framework->mapToValue( $fields['paradigm'], $this->paradigm_mappings, 'N' );
-		$fields['recognizer'] = "'" . $fields['recognizer'] . "'"; 
-		$fields['comparison'] = "'" . $fields['comparison'] . "'";
-		$fields['paradigm']   = "'" . $fields['paradigm'] . "'";
-		if( isset( $fields['meaning_id'] ) && $fields['meaning_id'] > 0 ) { 
+		$fields['paradigm'] = $this->framework->mapToValue( $fields['paradigm'], $this->paradigm_mappings, 'N' );
+		// Values are kept plain and bound below -- no manual quoting.
+		if( isset( $fields['meaning_id'] ) && $fields['meaning_id'] > 0 ) {
 			if( is_numeric( $fields['meaning_id'] ) ) {
-				$fields['id'] = $fields['meaning_id'];
+				$id = $fields['meaning_id'];
 				unset( $fields['meaning_id'] );
-				$sql = $this->buildUpdateSql( 'agent_meanings', $fields, "id = {$fields['id']}" );
-				$results = $this->framework->runSql( $sql );
+				$results = $this->updateRecords( 'agent_meanings', $fields, 'id = :where_id', array( ':where_id' => $id ) );
 				if( $results === null ) {
-					print "Updating meaning failed: problem trying to update the database.\n";
-					// TODO: log failure.. and set $meaning_id to null 
+					$warnings   .= 'Updating meaning failed: problem trying to update the database. ';
+					$meaning_id  = null;
 				}
-				else { $meaning_id = $fields['id']; }
+				else { $meaning_id = $id; }
 			}
 			else {
-				// TODO: log meaning_id was not numeric.. 
-				$warnings .= "Updating meaning failed: meaning_id provided was not numeric.";
-				$meaning_id = $fields['id'];
+				// TODO: log meaning_id was not numeric..
+				$warnings   .= "Updating meaning failed: meaning_id provided was not numeric.";
+				$meaning_id  = $fields['meaning_id'];
 			}
 		}
 		else {
 			if( $fields['recognizer'] == '' ) { $warnings .= 'A new meanings with a blank recognizer is not allowed.  '; }
 			else {
 				if( isset( $fields['meaning_id'] ) ) { unset( $fields['meaning_id'] ); }
-				$meaning_id = $this->insertAndGetId( 'id', 'agent_meanings', $fields );
+				$meaning_id = $this->insertRecord( 'agent_meanings', $fields, 'id' );
 			}
 		}
 		return array( $meaning_id, $warnings );
@@ -335,32 +331,31 @@ class AgentModels extends Models {
 				$warnings .= 'The priority specified was not numeric.  Therefore, it was defaulted to 0.';
 				$fields['priority'] = '0';
 			}
-			if( isset( $fields['functional'] ) ) { 
-				$fields['functional'] = "'" . $this->framework->mapToValue( stripslashes( $fields['functional'] ), $this->functional_mappings ) . "'";
+			if( isset( $fields['functional'] ) ) {
+				$fields['functional'] = $this->framework->mapToValue( stripslashes( $fields['functional'] ), $this->functional_mappings );
 			}
 			if( isset( $fields['conditions'] ) ) {
-				$fields['conditions'] = "'" . $this->sanitizeConditions( stripslashes( $fields['conditions'] ) ) . "'";
+				$fields['conditions'] = $this->sanitizeConditions( stripslashes( $fields['conditions'] ) );
 			}
 			if( isset( $fields['actions'] ) ) {
-				$fields['actions'] = "'" . $this->sanitizeActions( stripslashes( $fields['actions'] ) ) . "'";
+				$fields['actions'] = $this->sanitizeActions( stripslashes( $fields['actions'] ) );
 			}
 
-			// Update existing (if given reaction_id) or insert new (if not given reaction_id)..
+			// Values stay plain and are bound below. Update existing (if given a
+			// numeric reaction_id) or insert new otherwise.
+			$columns = array( 'meaning_id', 'priority', 'functional', 'conditions', 'actions' );
 			if( isset( $fields['reaction_id'] ) && is_numeric( $fields['reaction_id'] ) ) {
-				// Do an update..
 				$reaction_id = $fields['reaction_id'];
-				$fields['id'] = $fields['reaction_id'];
-				unset( $fields['reaction_id'] );
-				$sql = $this->buildUpdateSql( 'agent_reactions', $this->framework->removeAllBut( array( 'meaning_id', 'priority', 'functional', 'conditions', 'actions' ), $fields ), "id = {$fields['id']}" );
-				$results = $this->framework->runSql( $sql );
+				$values  = $this->framework->removeAllBut( $columns, $fields );
+				$results = $this->updateRecords( 'agent_reactions', $values, 'id = :where_id', array( ':where_id' => $reaction_id ) );
 				if( $results === null ) {
-					print "Updating meaning failed: problem trying to update the database.\n";
-					// TODO: log failure.. and set $meaning_id to null 
+					$warnings .= 'Updating the reaction failed: problem trying to update the database. ';
 				}
 			}
 			else {
 				// Do an insert..
-				$reaction_id = $this->insertAndGetId( 'id', 'agent_reactions', $this->framework->removeAllBut( array( 'meaning_id', 'priority', 'functional', 'conditions', 'actions' ), $fields ) );
+				$values      = $this->framework->removeAllBut( $columns, $fields );
+				$reaction_id = $this->insertRecord( 'agent_reactions', $values, 'id' );
 			}
 		}
 		return array( $reaction_id, $warnings );
@@ -401,9 +396,9 @@ class AgentModels extends Models {
 	}
 
 	public function getAllMeanings( $alphabetic = true ) {
-		if( $alphabetic ) { $order = 'recognizer'; }
-		else              { $order = 'length DESC'; }
-		$sql = "SELECT id, recognizer, comparison, paradigm FROM agent_meanings ORDER BY {$order}";
+		// Fixed literal ORDER BY clauses -- no interpolation of any kind.
+		if( $alphabetic ) { $sql = "SELECT id, recognizer, comparison, paradigm FROM agent_meanings ORDER BY recognizer"; }
+		else              { $sql = "SELECT id, recognizer, comparison, paradigm FROM agent_meanings ORDER BY length DESC"; }
 		$results = $this->framework->runSql( $sql );
 		$meanings = array();
 		foreach( $results as $result ) {
@@ -415,18 +410,22 @@ class AgentModels extends Models {
 	}
 
 	public function getMeaning( $meaning_id ) {
-		$sql = "SELECT id, recognizer, paradigm FROM agent_meanings WHERE id = $meaning_id";
-		$results = $this->framework->runSql( $sql );
-		if( $results === null ) { 
+		$results = $this->framework->runSql(
+			'SELECT id, recognizer, paradigm FROM agent_meanings WHERE id = :id',
+			array( ':id' => $meaning_id )
+		);
+		if( !is_array( $results ) || count( $results ) === 0 ) {
 			// TODO: deal with no results returned possibility
-			print "DEBUG: meaning #$meaning_id not found.<br/>\n";
+			return null;
 		}
 		return $results[0];  // associative array of items in the select statement above
 	}
 
 	public function getAllReactionsByMeaning( $meaning_id ) {
-		$sql = "SELECT id, priority, functional, conditions, actions FROM agent_reactions WHERE meaning_id = {$meaning_id} ORDER BY priority";
-		return $this->framework->runSql( $sql );
+		return $this->framework->runSql(
+			'SELECT id, priority, functional, conditions, actions FROM agent_reactions WHERE meaning_id = :meaning_id ORDER BY priority',
+			array( ':meaning_id' => $meaning_id )
+		);
 	}
 
 	public function getAllTopics() {
@@ -562,30 +561,36 @@ class AgentModels extends Models {
 	}
 
 	private function naturalReactionSelection( $meaning_id, $wildcards ) {
-		$sql = "
-			SELECT agent_reactions.id AS next_id, conditions, actions, last_used
-			FROM agent_reactions LEFT JOIN agent_reactions_used ON agent_reactions.id = agent_reactions_used.reaction_id 
-			WHERE agent_reactions.meaning_id = {$meaning_id} and functional <> 'F' 
-			ORDER BY isnull(last_used) desc, last_used, priority;
-		";
-		$reactions = $this->framework->runSql( $sql );
+		// ( last_used IS NULL ) replaces the MySQL-only isnull() so never-used
+		// reactions sort first on Postgres.
+		$reactions = $this->framework->runSql(
+			"SELECT agent_reactions.id AS next_id, conditions, actions, last_used
+			 FROM agent_reactions LEFT JOIN agent_reactions_used ON agent_reactions.id = agent_reactions_used.reaction_id
+			 WHERE agent_reactions.meaning_id = :meaning_id AND functional <> 'F'
+			 ORDER BY ( last_used IS NULL ) DESC, last_used, priority",
+			array( ':meaning_id' => $meaning_id )
+		);
 		$actions = '';
 		$reaction_id = null;
 		foreach( $reactions as $reaction ) {
 			if( $this->areConditionsTrue( $reaction['conditions'], $wildcards ) ) {
-				# Mark this reaction as having been used recently as to reduce its preferability for a little while.. 
+				# Mark this reaction as having been used recently as to reduce its preferability for a little while..
 				if( $reaction['last_used'] == null ) {
 					// if reaction never before used then append a last_used record (as now).. // TODO: use real user_id below..
-					$sql = "INSERT INTO agent_reactions_used ( reaction_id, user_id, last_used ) VALUES ( {$reaction['next_id']}, 0, now() )";  
-					$this->framework->runSql( $sql );
-				} 
+					$this->framework->runSql(
+						'INSERT INTO agent_reactions_used ( reaction_id, user_id, last_used ) VALUES ( :reaction_id, 0, now() )',
+						array( ':reaction_id' => $reaction['next_id'] )
+					);
+				}
 				else {
 					// if reaction used before then update its last_used record to now.. // TODO: use real user_id below..
-					$sql = "UPDATE agent_reactions_used SET last_used = now() WHERE user_id = 0 AND reaction_id = {$reaction['next_id']}";  
-					$this->framework->runSql( $sql );
+					$this->framework->runSql(
+						'UPDATE agent_reactions_used SET last_used = now() WHERE user_id = 0 AND reaction_id = :reaction_id',
+						array( ':reaction_id' => $reaction['next_id'] )
+					);
 				}
-	
-				# Break out with the reaction_id and actions to perform 
+
+				# Break out with the reaction_id and actions to perform
 				$actions     = $reaction['actions'];
 				$reaction_id = $reaction['next_id'];
 				break;
@@ -595,30 +600,36 @@ class AgentModels extends Models {
 	}
 
 	private function cyclicReactionSelection( $meaning_id, $wildcards ) {
-		$sql = "
-			SELECT agent_reactions.id AS next_id, conditions, actions, last_used
-			FROM agent_reactions LEFT JOIN agent_reactions_used ON agent_reactions.id = agent_reactions_used.reaction_id 
-			WHERE agent_reactions.meaning_id = {$meaning_id} and functional <> 'F' 
-			ORDER BY isnull(last_used) desc, last_used, priority;
-		";
-		$reactions = $this->framework->runSql( $sql );
+		// ( last_used IS NULL ) replaces the MySQL-only isnull() so never-used
+		// reactions sort first on Postgres.
+		$reactions = $this->framework->runSql(
+			"SELECT agent_reactions.id AS next_id, conditions, actions, last_used
+			 FROM agent_reactions LEFT JOIN agent_reactions_used ON agent_reactions.id = agent_reactions_used.reaction_id
+			 WHERE agent_reactions.meaning_id = :meaning_id AND functional <> 'F'
+			 ORDER BY ( last_used IS NULL ) DESC, last_used, priority",
+			array( ':meaning_id' => $meaning_id )
+		);
 		$actions = '';
 		$reaction_id = null;
 		foreach( $reactions as $reaction ) {
 			if( $this->areConditionsTrue( $reaction['conditions'], $wildcards ) ) {
-				# Mark this reaction as having been used recently as to reduce its preferability for a little while.. 
+				# Mark this reaction as having been used recently as to reduce its preferability for a little while..
 				if( $reaction['last_used'] == null ) {
 					// if reaction never before used then append a last_used record (as now).. // TODO: use real user_id below..
-					$sql = "INSERT INTO agent_reactions_used ( reaction_id, user_id, last_used ) VALUES ( {$reaction['next_id']}, 0, now() )";  
-					$this->framework->runSql( $sql );
-				} 
+					$this->framework->runSql(
+						'INSERT INTO agent_reactions_used ( reaction_id, user_id, last_used ) VALUES ( :reaction_id, 0, now() )',
+						array( ':reaction_id' => $reaction['next_id'] )
+					);
+				}
 				else {
 					// if reaction used before then update its last_used record to now.. // TODO: use real user_id below..
-					$sql = "UPDATE agent_reactions_used SET last_used = now() WHERE user_id = 0 AND reaction_id = {$reaction['next_id']}";  
-					$this->framework->runSql( $sql );
+					$this->framework->runSql(
+						'UPDATE agent_reactions_used SET last_used = now() WHERE user_id = 0 AND reaction_id = :reaction_id',
+						array( ':reaction_id' => $reaction['next_id'] )
+					);
 				}
-	
-				# Break out with the reaction_id and actions to perform 
+
+				# Break out with the reaction_id and actions to perform
 				$actions     = $reaction['actions'];
 				$reaction_id = $reaction['next_id'];
 				break;
@@ -628,8 +639,11 @@ class AgentModels extends Models {
 	}
 
 	private function randomReactionSelection( $meaning_id, $wildcards ) {
-		$sql = "SELECT id as reaction_id, conditions, actions FROM agent_reactions WHERE meaning_id = $meaning_id AND functional <> 'F' ORDER BY priority";
-		$reactions = $this->framework->runSql( $sql );
+		$actions = '';
+		$reactions = $this->framework->runSql(
+			"SELECT id as reaction_id, conditions, actions FROM agent_reactions WHERE meaning_id = :meaning_id AND functional <> 'F' ORDER BY priority",
+			array( ':meaning_id' => $meaning_id )
+		);
 		$number = count( $reactions );
 		$invalids = array();
 		if( $number == 0 ) { return array( 'reaction_id' => null, 'actions' => $actions ); }
@@ -818,9 +832,13 @@ class AgentModels extends Models {
 
 	// (is {=|>|<}n "object")
 	private function isQuantity( $adjective, $number, $object, $wildcards ) {
-		$object = $this->writeInWildcardValues( $object, $wildcards );
-		$where = 'memory LIKE ' . $this->framework->quoteForDatabase( preg_replace( '/\[([^]]*)\]/','%', $object ) ); 
-		$counted = $this->getRecordCount( 'agent_memories', $where );
+		$object  = $this->writeInWildcardValues( $object, $wildcards );
+		$pattern = preg_replace( '/\[([^]]*)\]/', '%', $object );
+		$rows    = $this->framework->runSql(
+			'SELECT COUNT(*) AS quantity FROM agent_memories WHERE memory LIKE :pattern',
+			array( ':pattern' => $pattern )
+		);
+		$counted = ( is_array( $rows ) && count( $rows ) > 0 ) ? $rows[0]['quantity'] : 0;
 		//print "isQuantity: adjective = \"$adjective\", number = \"$number\", object = \"$object\", counted = \"$counted\"\n"; 
 		switch( $adjective ) {
 			case '>': if( $counted > $number ) { $answer = true; } else { $answer = false; } break;
@@ -839,9 +857,10 @@ class AgentModels extends Models {
 		$object = $this->writeInWildcardValues( $object, $wildcards );
 
 		// Collect wildcard variable values from all matching subject memories
-		$where = 'memory LIKE \'' . preg_replace( '/\[([^]]*)\]/','%', $subject ) . '\'';
-		$sql = "SELECT memory FROM agent_memories WHERE $where";
-		$subject_records = $this->framework->runSql( $sql );
+		$subject_records = $this->framework->runSql(
+			'SELECT memory FROM agent_memories WHERE memory LIKE :pattern',
+			array( ':pattern' => preg_replace( '/\[([^]]*)\]/', '%', $subject ) )
+		);
 		$subject_wildcards = array();
 		$next = -1;
 		foreach( $subject_records as $subject_record ) {
@@ -849,9 +868,10 @@ class AgentModels extends Models {
 		}
 
 		// Collect wildcard variable values from all matching object memories
-		$where = 'memory LIKE \'' . preg_replace( '/\[([^]]*)\]/','%', $object ) . '\'';
-		$sql = "SELECT memory FROM agent_memories WHERE $where";
-		$object_records = $this->framework->runSql( $sql );
+		$object_records = $this->framework->runSql(
+			'SELECT memory FROM agent_memories WHERE memory LIKE :pattern',
+			array( ':pattern' => preg_replace( '/\[([^]]*)\]/', '%', $object ) )
+		);
 		$object_wildcards = array();
 		$next = -1;
 		foreach( $object_records as $object_record ) {
@@ -914,20 +934,22 @@ class AgentModels extends Models {
 
 	private function actionRemember( $params, $wildcards ) {
 		// TODO: add date/time, if provided for expiration
-		$fields = array();
-		$fields['memory'] = trim( "'" . addslashes( $this->writeInWildcardValues( $params[1], $wildcards ) ) . "'" );
-		$this->updateElseInsert( 'agent_memories', $fields );
+		$memory = $this->writeInWildcardValues( $params[1], $wildcards );
+		// Store the memory if not already present (bound value; no addslashes).
+		$this->updateElseInsert( 'agent_memories', array( 'memory' => $memory ), 'memory = :where_memory', array( ':where_memory' => $memory ) );
 		return array( '', ";remembered" );
 	}
 
 	private function actionRecall( $params, &$wildcards ) {
 		// create search pattern by applying wildcards from user statement
-		$seeking = trim( addslashes( $this->writeInWildcardValues( $params[1], $wildcards ) ) );
+		$seeking = trim( $this->writeInWildcardValues( $params[1], $wildcards ) );
 
 		// extract any other wildcards from memory
 		$sql_pattern = preg_replace( '/\[([^]]*)\]/','%', $seeking );
-		$sql = "SELECT memory FROM agent_memories WHERE memory LIKE '{$sql_pattern}'";
-		$matches = $this->framework->runSql( $sql );
+		$matches = $this->framework->runSql(
+			'SELECT memory FROM agent_memories WHERE memory LIKE :pattern',
+			array( ':pattern' => $sql_pattern )
+		);
 		foreach( $matches as $match ) {
 			list( $matched, $new_wildcards ) = $this->compareStatementToRecognizer( strtolower( $match['memory'] ), strtolower( $seeking ) );
 			if( !$matched ) {
@@ -950,9 +972,11 @@ class AgentModels extends Models {
 	}
 
 	private function actionForget( $params, $wildcards ) {
-		$pattern =  preg_replace( '/\[([^]]*)\]/','%', $params[1] );
-		$sql = "DELETE FROM agent_memories WHERE memory LIKE '{$pattern}'"; 
-		$this->framework->runSql( $sql );
+		$pattern = preg_replace( '/\[([^]]*)\]/','%', $params[1] );
+		$this->framework->runSql(
+			'DELETE FROM agent_memories WHERE memory LIKE :pattern',
+			array( ':pattern' => $pattern )
+		);
 		return array( '', ';forgot' );
 	}
 
