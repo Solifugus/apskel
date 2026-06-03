@@ -1121,17 +1121,9 @@ class Framework {
 		return $rows;
 	}
 
-	// Quote string for insertion into database (based on type)
-	public function quoteForDatabase( $unquoted ) {
-		$this->ensureDatabaseAccessible();
-		try { $quoted = $this->database_connection->quote( $unquoted ); } // using PDO's quote method
-		catch( PDOException $errorObject ) {
-			// TODO: log error
-			print "Error trying to quote \"{$unquoted}\" for database: " . $errorObject->getMessage();
-			$quoted = $unquoted;  // TODO: what else can I do?
-		}
-		return $quoted;
-	}
+	// NOTE: quoteForDatabase() was removed once all modules moved to prepared
+	// statements (bound parameters via runSql($sql, $params)). Manual quoting is
+	// no longer used anywhere and should not be reintroduced.
 
 	public function getLastInsertId( $id ) {
 		$this->ensureDatabaseAccessible();

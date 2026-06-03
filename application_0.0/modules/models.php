@@ -599,69 +599,12 @@ class Models {
 		return $this->insertRecord( $table, $fields, null );
 	}
 
-	// ------------------ Legacy SQL string builders (DEPRECATED) ---------------------
-	// WARNING: these interpolate values into SQL and rely on callers pre-quoting
-	// strings (a leading "'" means "quote me"), which is injection-prone. They remain
-	// only for the not-yet-migrated agent module. New code MUST use the parameterized
-	// helpers above (buildSelect/insertRecord/updateRecords/updateElseInsert).
-
-	public function buildUpdateSql( $tables, $fields, $where ) {
-		if( is_array( $fields ) ) {
-			$fields_updateable = '';
-			foreach( $fields as $field => $value ) {
-				if( substr( trim( $value ), 0, 1) == "'" ) { 
-					$value = $this->framework->quoteForDatabase( trim( $value, "'" ) );
-					$value = str_replace( '\"', '"', $value );
-				}
-				elseif( !is_numeric( $value ) ) {
-					$this->framework->logMessage( 'The ->buildInsert() method in the ' . __FILE__ . " file was passed an unquoted string ({$value}) to insert.", WARNING );
-				}
-				$fields_updateable .= "$field = $value, ";
-			}
-			$fields_updateable = trim( $fields_updateable, ', ' );
-		}
-		else {
-			$fields_updateable = $fields;
-		}
-
-		$sql = "UPDATE $tables SET $fields_updateable WHERE $where";
-		return $sql;
-	}
-
-	public function buildInsertSql( $tables, $fields, $where = '' ) {
-		if( is_array( $fields ) ) {
-			$fields_insertable = '';
-			$fields_selectable = '';
-			foreach( $fields as $field => $value ) {
-				if( substr( trim( $value ), 0, 1) == "'" ) { 
-					$value = $this->framework->quoteForDatabase( trim( $value, "'" ) );
-					$value = str_replace( '\"', '"', $value );
-				}
-				elseif( !is_numeric( $value ) ) {
-					$this->framework->logMessage( 'The ->buildInsert() method in the ' . __FILE__ . " file was passed an unquoted string ({$value}) to insert.", WARNING );
-				}
-				$fields_insertable .= "$value, ";
-				$fields_selectable .= "$field, ";
-			}
-			$fields_insertable = ltrim( rtrim( $fields_insertable, ', ' ) );
-			$fields_selectable = ltrim( rtrim( $fields_selectable, ', ' ) );
-		}
-		else {
-			$this->framework->logMessage( 'The ->buildInsert() method in the ' . __FILE__ . ' file expected an associative array as its $fields parameter but an array was not provided.', CRITICAL );
-			return null;
-		}
-
-		if( $where > '' ) { $where = "WHERE {$where}"; }
-		$sql = "INSERT INTO $tables ( $fields_selectable ) VALUES ( $fields_insertable ) $where";
-		return $sql;
-	}
-
-	// Builds and runs insert SQL, returning id of inserted row
-	public function insertAndGetId( $id, $tables, $fields, $where = '' ) {
-		$sql = $this->buildInsertSql( $tables, $fields, $where );
-		$this->framework->runSql( $sql );
-		return $this->framework->getLastInsertId( $id );
-	}
+	// NOTE: the legacy string-builder helpers (buildInsertSql/buildUpdateSql/
+	// insertAndGetId) and framework->quoteForDatabase() were removed once the
+	// agent module -- their last consumer -- was migrated to prepared statements.
+	// All data access now uses the parameterized helpers above
+	// (buildSelect/insertRecord/updateRecords/updateElseInsert) and the
+	// registration-aware record API (getRecords/setRecords/addRecords/...).
 
 } // End of Models class
 
